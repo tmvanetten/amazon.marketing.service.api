@@ -13,7 +13,9 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        'App\Console\Commands\AmazonDownload'
+        'App\Console\Commands\AmazonDownload',
+        'App\Console\Commands\RequestApiReports',
+        'App\Console\Commands\GetReportToDatabase'
         //
     ];
 
