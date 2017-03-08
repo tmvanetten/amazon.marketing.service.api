@@ -26,11 +26,13 @@ class CampaignsController extends Controller
      * @param $date string
      * @return json response
      */
-    public function index($date) {
-        $campaigns = CampaignReport::getCampaigns($date);
+    public function index($date, $skip, $rows) {
+        $counts = count(CampaignReport::getCampaigns($date));
+        $campaigns = CampaignReport::getCampaigns($date, $skip, $rows);
         return response()->json([
             'status' => true,
-            'campaigns' => $campaigns
+            'campaigns' => $campaigns,
+            'counts' => $counts
         ]);
     }
 

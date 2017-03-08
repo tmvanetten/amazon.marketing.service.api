@@ -25,7 +25,7 @@ $app->get('campaigns', [
 */
 $app->group(['prefix' => 'api'], function () use ($app) {
     //route for Capmaigns
-	$app->get('campaigns/{date}', [
+	$app->get('campaigns/{date}/skip/{skip}/rows/{rows}', [
         'as' => 'campaigns', 'uses' => 'App\Http\Controllers\CampaignsController@index'
     ]);
     //route for Campaign
