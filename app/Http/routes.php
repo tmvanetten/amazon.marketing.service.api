@@ -48,4 +48,12 @@ $app->group(['prefix' => 'api'], function () use ($app) {
     $app->get('dates', [
         'as' => 'dates', 'uses' => 'App\Http\Controllers\InfoController@getDates'
     ]);
+    //route to get dates array
+    $app->get('strategy', [
+        'as' => 'strategy', 'uses' => 'App\Http\Controllers\StrategyController@getStrategy'
+    ]);
+    //route to get dates array
+    $app->post('strategy', [
+        'as' => 'strategy', 'uses' => 'App\Http\Controllers\StrategyController@saveStrategy'
+    ]);
 });
