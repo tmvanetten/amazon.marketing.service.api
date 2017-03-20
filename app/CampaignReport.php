@@ -24,12 +24,14 @@ class CampaignReport extends Model
     protected $fillable = [
         'request_report_id',
         'campaignId',
+        'enabled',
         'name',
         'campaignType',
         'targetingType',
         'premiumBidAdjustment',
         'dailyBudget',
         'startDate',
+        'endDate',
         'state',
         'clicks',
         'cost',
@@ -53,13 +55,13 @@ class CampaignReport extends Model
      * @var $rows integer
      * @return array
      */
-    public static function getCampaigns($selectedDate, $skip = null, $rows = null){
-        $query = DB::table('campaign_report')
-            ->join('reqest_report_api', function ($join) use ($selectedDate){
-                $join->on('reqest_report_api.id', '=', 'campaign_report.request_report_id')
-                    ->where('reqest_report_api.amazn_report_date', '=', $selectedDate);
-            });
-        if(!is_null($skip) && !is_null($rows)) return $query->offset($skip)->limit($rows)->get();
+    public static function getCampaigns($reports_ids, $skip = null, $rows = null){
+        $query = DB::table('campaign_report')->select(DB::raw('id, request_report_id, campaignId, enabled, name, campaignType, targetingType, premiumBidAdjustment,
+            dailyBudget, startDate, state, avg(clicks) clicks, avg(cost) cost, avg(impressions) impressions, avg(attributedConversions1dSameSKU) attributedConversions1dSameSKU,
+            avg(attributedSales1d) attributedSales1d, avg(attributedConversions1d) attributedConversions1d, avg(attributedSales1dSameSKU) attributedSales1dSameSKU'))
+            ->whereIn('request_report_id', $reports_ids)->groupBy('campaignId');
+
+        if(!is_null($skip) || !is_null($rows)) return $query->offset($skip)->limit($rows)->get();
         return $query->get();
     }
 }

@@ -25,24 +25,28 @@ $app->get('campaigns', [
 */
 $app->group(['prefix' => 'api'], function () use ($app) {
     //route for Capmaigns
-	$app->get('campaigns/{date}/skip/{skip}/rows/{rows}', [
+	$app->get('campaigns', [
         'as' => 'campaigns', 'uses' => 'App\Http\Controllers\CampaignsController@index'
     ]);
     //route for Campaign
-    $app->get('campaign/{campaignId}/selectedDate/{selectedDate}', [
+    $app->get('campaign', [
         'as' => 'campaign', 'uses' => 'App\Http\Controllers\CampaignsController@getCampaignById'
     ]);
     //route for Product Ads  // `/${id}/adGroup/${gid}/selectedDate/${selectedDate}`;
-    $app->get('campaign/{campaignId}/adGroup/{adgroupId}/selectedDate/{selectedDate}', [
-        'as' => 'campaign', 'uses' => 'App\Http\Controllers\CampaignsController@getProductAd'
+    $app->get('productAds', [
+        'as' => 'productAds', 'uses' => 'App\Http\Controllers\CampaignsController@getProductAds'
     ]);
     //route for Keywords  // `/${id}/adGroup/${gid}/selectedDate/${selectedDate}`;
-    $app->get('keywords/{campaignId}/adGroup/{adgroupId}/selectedDate/{selectedDate}', [
-        'as' => 'keywords', 'uses' => 'App\Http\Controllers\CampaignsController@getKeywords'
+    $app->get('keyWords', [
+        'as' => 'keyWords', 'uses' => 'App\Http\Controllers\CampaignsController@getKeywords'
     ]);
     //route for Negative Keywords  // `/${id}/adGroup/${gid}/selectedDate/${selectedDate}`;
-    $app->get('nkeywords/{campaignId}/adGroup/{adgroupId}/selectedDate/{selectedDate}', [
-        'as' => 'nkeywords', 'uses' => 'App\Http\Controllers\CampaignsController@getNKeywords'
+    $app->get('negativeKeyWords', [
+        'as' => 'negativeKeyWords', 'uses' => 'App\Http\Controllers\CampaignsController@getNegativeKeywords'
+    ]);
+    //route for switch function;
+    $app->post('enableDisable', [
+        'as' => 'enableDisable', 'uses' => 'App\Http\Controllers\CampaignsController@enableDisable'
     ]);
     //route to get dates array
     $app->get('dates', [

@@ -33,7 +33,6 @@ class GetReportToDatabase extends Command
     /**
      * Create a new command instance.
      *
-     * @return void
      */
     public function __construct()
     {
@@ -51,13 +50,13 @@ class GetReportToDatabase extends Command
         $this->info('--- Start Command ---');
         $this->info(' ');
         $dates = [
-            'yesterday' => date("Ymd", time() - 60 * 60 * 24),
-            'pastTwoDays' => date("Ymd", time() - 60 * 60 * 48),
-            'pastThreeDays' => date("Ymd", time() - 60 * 60 * 72),
-            'pastFourDays' => date("Ymd", time() - 60 * 60 * 96),
-            'pastFiveDays' => date("Ymd", time() - 60 * 60 * 120),
-            'pastSixDays' => date("Ymd", time() - 60 * 60 * 144),
-            'pastSevenDays' => date("Ymd", time() - 60 * 60 * 168)
+            'yesterday' => date("Y-m-d", time() - 60 * 60 * 24),
+            'pastTwoDays' => date("Y-m-d", time() - 60 * 60 * 48),
+            'pastThreeDays' => date("Y-m-d", time() - 60 * 60 * 72),
+            'pastFourDays' => date("Y-m-d", time() - 60 * 60 * 96),
+            'pastFiveDays' => date("Y-m-d", time() - 60 * 60 * 120),
+            'pastSixDays' => date("Y-m-d", time() - 60 * 60 * 144),
+            'pastSevenDays' => date("Y-m-d", time() - 60 * 60 * 168)
         ];
         $config = array(
             "clientId" => env('AMAZN_ID'),
@@ -88,10 +87,18 @@ class GetReportToDatabase extends Command
                             if(isset($dataItem['campaignId'])){
                                 $requestCampaignData = $client->getCampaign($dataItem['campaignId']);
                                 if($requestCampaignData['success']) {
+
                                     $campaignData = json_decode($requestCampaignData['response']);
                                     $campaignData = (array) $campaignData;
                                     $result = $this->prepareData($campaignData, $dataItem);
-                                    $campaign = CampaignReport::create($result);
+                                    $campaign = CampaignReport::where('campaignId', $result['campaignId'])
+                                        ->where('request_report_id', $item->id)
+                                        ->first();
+                                    if(is_null($campaign)){
+                                        $campaign = CampaignReport::create($result);
+                                    }else{
+                                        $campaign = $this->_updateModel($campaign, $result);
+                                    }
                                     $campaign->request_report_id = $item->id;
                                     $campaign->save();
                                     $totalCompleted++;
@@ -105,7 +112,15 @@ class GetReportToDatabase extends Command
                                     $adGroupData = (array)$adGroupData;
                                     //var_dump($requestAdGroupData);
                                     $result = $this->prepareData($adGroupData, $dataItem);
-                                    $adGroup = AdGroupsReport::create($result);
+                                    $adGroup = AdGroupsReport::where('campaignId', $result['campaignId'])
+                                        ->where('adGroupId', $result['adGroupId'])
+                                        ->where('request_report_id', $item->id)
+                                        ->first();
+                                    if(is_null($adGroup)){
+                                        $adGroup = AdGroupsReport::create($result);
+                                    }else{
+                                        $adGroup = $this->_updateModel($adGroup, $result);
+                                    }
                                     $adGroup->request_report_id = $item->id;
                                     $adGroup->save();
                                     if (!NegativeKeywordsReport::where('ad_group_id', $adGroup->id)->first())
@@ -126,7 +141,16 @@ class GetReportToDatabase extends Command
                                     $keywordData = (array)$keywordData;
                                     var_dump($keywordData);
                                     $result = $this->prepareData($keywordData, $dataItem);
-                                    $keyword = KeywordsReport::create($result);
+                                    $keyword = KeywordsReport::where('campaignId', $result['campaignId'])
+                                        ->where('adGroupId', $result['adGroupId'])
+                                        ->where('keywordId', $result['keywordId'])
+                                        ->where('request_report_id', $item->id)
+                                        ->first();
+                                    if(is_null($keyword)){
+                                        $keyword = KeywordsReport::create($result);
+                                    }else{
+                                        $keyword = $this->_updateModel($keyword, $result);
+                                    }
                                     $keyword->request_report_id = $item->id;
                                     $keyword->save();
                                     $totalCompleted++;
@@ -170,7 +194,16 @@ class GetReportToDatabase extends Command
                                         if($stop) break;
                                     }
                                     $result['name'] = $name;
-                                    $ad = ProductAdsReport::create($result);
+                                    $ad = ProductAdsReport::where('campaignId', $result['campaignId'])
+                                        ->where('adGroupId', $result['adGroupId'])
+                                        ->where('adId', $result['adId'])
+                                        ->where('request_report_id', $item->id)
+                                        ->first();
+                                    if(is_null($ad)){
+                                        $ad = ProductAdsReport::create($result);
+                                    }else{
+                                        $ad = $this->_updateModel($ad, $result);
+                                    }
                                     $ad->request_report_id = $item->id;
                                     $ad->save();
                                     $totalCompleted++;
@@ -224,7 +257,16 @@ class GetReportToDatabase extends Command
             foreach($toSave as $item){
                 $itemData = (array)$item;
                 var_dump($itemData);
-                $nkeyword = NegativeKeywordsReport::create($itemData);
+                $nkeyword = NegativeKeywordsReport::where('campaignId', $itemData['campaignId'])
+                    ->where('adGroupId', $itemData['adGroupId'])
+                    ->where('keywordId', $itemData['keywordId'])
+                    ->where('ad_group_id', $adGroupId)
+                    ->first();
+                if(is_null($nkeyword)){
+                    $nkeyword = NegativeKeywordsReport::create($itemData);
+                }else {
+                    $nkeyword = $this->_updateModel($nkeyword, $itemData);
+                }
                 $nkeyword->ad_group_id = $adGroupId;
                 $nkeyword->save();
             }
@@ -233,4 +275,17 @@ class GetReportToDatabase extends Command
         return false;
     }
 
+    /**
+     * Mass assign to model.
+     *
+     * @param $model Eloquent
+     * @param $data array
+     * @return Eloquent
+     */
+    protected function _updateModel($model, $data){
+        foreach ($data as $key=>$value){
+            $model->$key = $value;
+        }
+        return $model;
+    }
 }

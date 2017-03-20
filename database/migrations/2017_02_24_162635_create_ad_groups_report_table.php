@@ -20,6 +20,7 @@ class CreateAdGroupsReportTable extends Migration
                 ->references('id')->on('reqest_report_api')
                 ->onDelete('cascade')->onUpdate('cascade');
             $table->bigInteger('adGroupId')->nullable();
+            $table->tinyInteger('enabled')->default(0);
             $table->string('name')->nullable();
             $table->bigInteger('campaignId')->nullable();
             $table->string('defaultBid')->nullable();

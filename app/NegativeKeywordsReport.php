@@ -20,6 +20,7 @@ class NegativeKeywordsReport extends Model
         'ad_group_id',
         'campaignId',
         'adGroupId',
+        'enabled',
         'keywordText',
         'matchType',
         'state'
