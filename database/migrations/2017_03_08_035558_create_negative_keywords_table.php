@@ -20,6 +20,7 @@ class CreateNegativeKeywordsTable extends Migration
             $table->bigInteger('keywordId')->nullable();
             $table->bigInteger('campaignId')->nullable();
             $table->bigInteger('adGroupId')->nullable();
+            $table->tinyInteger('enabled')->default(0);
             $table->string('keywordText')->nullable();
             $table->string('matchType')->nullable();
             $table->string('state')->nullable();

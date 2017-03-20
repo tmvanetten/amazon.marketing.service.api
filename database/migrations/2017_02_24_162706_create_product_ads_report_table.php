@@ -22,6 +22,7 @@ class CreateProductAdsReportTable extends Migration
             $table->string('adId')->nullable();
             $table->string('campaignId')->nullable();
             $table->string('adGroupId')->nullable();
+            $table->tinyInteger('enabled')->default(0);
             $table->string('sku')->nullable();
             $table->string('name')->nullable();
             $table->string('state')->nullable();

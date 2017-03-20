@@ -14,6 +14,7 @@ class CreateCampaignReportTable extends Migration
             $table->foreign('request_report_id')
                 ->references('id')->on('reqest_report_api')->onDelete('cascade')->onUpdate('cascade');
             $table->bigInteger('campaignId')->nullable();
+            $table->tinyInteger('enabled')->default(0);
             $table->string('name')->nullable();
             $table->string('campaignType')->nullable();
             $table->string('targetingType')->nullable();
