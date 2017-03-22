@@ -105,6 +105,8 @@ class RequestApiReportsHelper
         $data = $request['response'];
         $profileData = json_decode($data);
         foreach($profileData as $profile) {
+			//prevent downloading reports for Canada campaigns 
+			if($profile->profileId == 2727303786791345) continue;
             $client->profileId = $profile->profileId;
             foreach($this->_report_types as $reportType) {
                 $day = 1;
