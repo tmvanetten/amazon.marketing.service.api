@@ -27,6 +27,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        //
+        $schedule->command('amazon:request_report')
+            ->hourly()->appendOutputTo(storage_path('requestLog.txt'));;
+        $schedule->command('amazon:get_report_to_database')
+            ->dailyAt('01:20')->appendOutputTo(storage_path('saveReportToDBLog.txt'));;
     }
 }

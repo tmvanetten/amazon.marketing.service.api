@@ -140,17 +140,14 @@ class RequestApiReportsHelper
             'metrics' => 'impressions,clicks,cost,attributedConversions1dSameSKU,attributedConversions1d,attributedSales1dSameSKU,attributedSales1d'));
         $data = $request['response'];
         $report = json_decode($data);
-        var_dump($report);
-        var_dump($this->_past_day);
         if (!empty($report->reportId)) {
             $reportItem = $this->_getPastReport($profile->profileId, $reportType);
-            var_dump($reportItem);
             if(!is_null($reportItem)){
                 $reportItem->type = $reportType;
                 $reportItem->report_date = date('Y-m-d');
                 $reportItem->amazn_profile_id = $client->profileId;
                 $reportItem->amazn_report_id = $report->reportId;
-                $reportItem->amazn_report_date = date('Y-m-d', strtotime($this->_past_day));
+                $reportItem->amazn_report_date = $this->_past_day;
                 $reportItem->amazn_record_type = $report->recordType;
                 $reportItem->amazn_status = 'IN_PROGRESS'; //$report->status;
                 $reportItem->amazn_status_details = $report->statusDetails;
@@ -161,7 +158,7 @@ class RequestApiReportsHelper
                 $reportItem->report_date = date('Y-m-d');
                 $reportItem->amazn_profile_id = $client->profileId;
                 $reportItem->amazn_report_id = $report->reportId;
-                $reportItem->amazn_report_date = date('Y-m-d', strtotime($this->_past_day));
+                $reportItem->amazn_report_date = $this->_past_day;
                 $reportItem->amazn_record_type = $report->recordType;
                 $reportItem->amazn_status =  'IN_PROGRESS'; //$report->status;
                 $reportItem->amazn_status_details = $report->statusDetails;
@@ -189,7 +186,7 @@ class RequestApiReportsHelper
     protected function _getPastReport($profileId, $reportType){
         return RequestReportAPI::where('amazn_profile_id', $profileId)
             ->where('type', $reportType)
-            ->where('amazn_report_date',  date('Y-m-d', strtotime($this->_past_day)))
+            ->where('amazn_report_date', $this->_past_day)
             ->first();
     }
 
@@ -198,7 +195,7 @@ class RequestApiReportsHelper
      * @return boolean
      */
     protected function _deleteOlderThan30Days(){
-        $items = RequestReportAPI::where('amazn_report_date', '<', date('Y-m-d', strtotime($this->_past_thirty_days_date)))->delete();
+        $items = RequestReportAPI::where('amazn_report_date', '<', $this->_past_thirty_days_date)->delete();
         return $items;
     }
 }
