@@ -33,6 +33,7 @@ class GetReportToDatabase extends Command
     /**
      * Create a new command instance.
      *
+     * @return void
      */
     public function __construct()
     {
@@ -50,13 +51,13 @@ class GetReportToDatabase extends Command
         $this->info('--- Start Command ---');
         $this->info(' ');
         $dates = [
-            'yesterday' => date("Y-m-d", time() - 60 * 60 * 24),
-            'pastTwoDays' => date("Y-m-d", time() - 60 * 60 * 48),
-            'pastThreeDays' => date("Y-m-d", time() - 60 * 60 * 72),
-            'pastFourDays' => date("Y-m-d", time() - 60 * 60 * 96),
-            'pastFiveDays' => date("Y-m-d", time() - 60 * 60 * 120),
-            'pastSixDays' => date("Y-m-d", time() - 60 * 60 * 144),
-            'pastSevenDays' => date("Y-m-d", time() - 60 * 60 * 168)
+            'yesterday' => date("Ymd", time() - 60 * 60 * 24),
+            'pastTwoDays' => date("Ymd", time() - 60 * 60 * 48),
+            'pastThreeDays' => date("Ymd", time() - 60 * 60 * 72),
+            'pastFourDays' => date("Ymd", time() - 60 * 60 * 96),
+            'pastFiveDays' => date("Ymd", time() - 60 * 60 * 120),
+            'pastSixDays' => date("Ymd", time() - 60 * 60 * 144),
+            'pastSevenDays' => date("Ymd", time() - 60 * 60 * 168)
         ];
         $config = array(
             "clientId" => env('AMAZN_ID'),
@@ -87,7 +88,7 @@ class GetReportToDatabase extends Command
                             if(isset($dataItem['campaignId'])){
                                 $requestCampaignData = $client->getCampaign($dataItem['campaignId']);
                                 if($requestCampaignData['success']) {
-
+                                    var_dump($requestCampaignData);
                                     $campaignData = json_decode($requestCampaignData['response']);
                                     $campaignData = (array) $campaignData;
                                     $result = $this->prepareData($campaignData, $dataItem);
@@ -107,6 +108,7 @@ class GetReportToDatabase extends Command
                         } else if ($item->type == 'adGroups') {
                             if(isset($dataItem['adGroupId'])) {
                                 $requestAdGroupData = $client->getAdGroup($dataItem['adGroupId']);
+                                var_dump($requestAdGroupData);
                                 if ($requestAdGroupData['success']) {
                                     $adGroupData = json_decode($requestAdGroupData['response']);
                                     $adGroupData = (array)$adGroupData;
@@ -136,10 +138,10 @@ class GetReportToDatabase extends Command
                         } else if ($item->type == 'keywords') {
                             if(isset($dataItem['keywordId'])) {
                                 $requestKeywordData = $client->getBiddableKeyword($dataItem['keywordId']);
+                                var_dump($requestKeywordData);
                                 if ($requestKeywordData['success']) {
                                     $keywordData = json_decode($requestKeywordData['response']);
                                     $keywordData = (array)$keywordData;
-                                    var_dump($keywordData);
                                     $result = $this->prepareData($keywordData, $dataItem);
                                     $keyword = KeywordsReport::where('campaignId', $result['campaignId'])
                                         ->where('adGroupId', $result['adGroupId'])
@@ -159,10 +161,10 @@ class GetReportToDatabase extends Command
                         } else if ($item->type == 'productAds') {
                             if(isset($dataItem['adId'])){
                                 $requestAdData = $client->getProductAd($dataItem['adId']);
+                                var_dump($requestAdData);
                                 if($requestAdData['success']) {
                                     $adData = json_decode($requestAdData['response']);
                                     $adData = (array) $adData;
-                                    var_dump($requestAdData);
                                     $result = $this->prepareData($adData, $dataItem);
                                     $sku_arr = explode(" ", $result['sku']);
                                     $name = '';
@@ -256,7 +258,6 @@ class GetReportToDatabase extends Command
         if(!empty($toSave)){
             foreach($toSave as $item){
                 $itemData = (array)$item;
-                var_dump($itemData);
                 $nkeyword = NegativeKeywordsReport::where('campaignId', $itemData['campaignId'])
                     ->where('adGroupId', $itemData['adGroupId'])
                     ->where('keywordId', $itemData['keywordId'])
