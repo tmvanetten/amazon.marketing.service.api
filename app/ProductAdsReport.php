@@ -47,8 +47,8 @@ class ProductAdsReport extends Model
      */
     public static function getProductAds($reports_ids, $campaignId, $adGroupId,  $skip = null, $rows = null){
         $query = DB::table('product_ads_report')->select(DB::raw('id, request_report_id, adId, adGroupId, campaignId, enabled, sku, asin, name,
-         state, avg(clicks) clicks, avg(cost) cost, avg(impressions) impressions, avg(attributedConversions1dSameSKU) attributedConversions1dSameSKU,
-            avg(attributedSales1d) attributedSales1d, avg(attributedConversions1d) attributedConversions1d, avg(attributedSales1dSameSKU) attributedSales1dSameSKU'))
+         state, sum(clicks) clicks, sum(cost) cost, sum(impressions) impressions,
+            sum(attributedSales1d) attributedSales1d, sum(attributedConversions1d) attributedConversions1d'))
             ->where('campaignId', $campaignId)->where('adGroupId', $adGroupId)->whereIn('request_report_id', $reports_ids)->groupBy('adId');
 
         if(!is_null($skip) || !is_null($rows)) return $query->offset($skip)->limit($rows)->get();

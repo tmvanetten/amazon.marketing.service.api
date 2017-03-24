@@ -44,8 +44,8 @@ class AdGroupsReport extends Model
      */
     public static function getAdgroups($reports_ids, $campaignId, $skip = null, $rows = null){
         $query = DB::table('ad_group_report')->select(DB::raw('id, request_report_id, adGroupId, campaignId, enabled, name, defaultBid,
-         state, avg(clicks) clicks, avg(cost) cost, avg(impressions) impressions, avg(attributedConversions1dSameSKU) attributedConversions1dSameSKU,
-            avg(attributedSales1d) attributedSales1d, avg(attributedConversions1d) attributedConversions1d, avg(attributedSales1dSameSKU) attributedSales1dSameSKU'))
+         state, sum(clicks) clicks, sum(cost) cost, sum(impressions) impressions, sum(attributedSales1d) sales,
+         sum(attributedSales1d) attributedSales1d, sum(attributedConversions1d) attributedConversions1d'))
             ->where('campaignId', $campaignId)->whereIn('request_report_id', $reports_ids)->groupBy('adGroupId');
 
         if(!is_null($skip) || !is_null($rows)) return $query->offset($skip)->limit($rows)->get();

@@ -23,15 +23,10 @@ class InfoController extends Controller
      */
     public function getDates() {
         $dates = [
-            array('value' =>date("Y-m-d", time() - 60 * 60 * 24), 'label' => 'Yesterday' ),
-            array('value' => date("Y-m-d", time() - 60 * 60 * 48), 'label' => 'Past 2 Days' ),
-            array('value' => date("Y-m-d", time() - 60 * 60 * 72), 'label' => 'Past 3 Days' ),
-            array('value' => date("Y-m-d", time() - 60 * 60 * 96), 'label' => 'Past 4 Days' ),
-            array('value' => date("Y-m-d", time() - 60 * 60 * 120), 'label' => 'Past 5 Days' ),
-            array('value' => date("Y-m-d", time() - 60 * 60 * 144), 'label' => 'Past 6 Days' ),
-            array('value' => date("Y-m-d", time() - 60 * 60 * 168), 'label' => 'Past 7 Days' ),
+            'endDate' => date("Y-m-d", time() - 60 * 60 * 24), //yesterday
+            'beginDate' => date("Y-m-d", time() - 60 * 60 * 24 * 7),  //7 days ago
         ];
-        
+
         $minDate = RequestReportAPI::select('amazn_report_date')->orderBy('amazn_report_date', 'asc')->first();
         $maxDate = RequestReportAPI::select('amazn_report_date')->orderBy('amazn_report_date', 'desc')->first();
 
@@ -40,11 +35,10 @@ class InfoController extends Controller
             'data' => [
                 'dates' => $dates,
                 'availableDates' => [
-                    'minDate' => date('m/d/Y', strtotime($minDate->amazn_report_date . "-1 days")),
-                    'maxDate' => date('m/d/Y', strtotime($maxDate->amazn_report_date . "+1 days")),
+                    'minDate' => date('Y-m-d', strtotime($minDate->amazn_report_date)),
+                    'maxDate' => date('Y-m-d', strtotime($maxDate->amazn_report_date)),
                 ]
             ]
         ]);
     }
-
 }

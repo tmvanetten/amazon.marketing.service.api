@@ -32,8 +32,7 @@ class CampaignsController extends Controller
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
         $rows = $request->input('rows');
-        $reports_ids = [];
-        $reports_ids = $beginDate && $endDate ? $this->_getReportId($beginDate, $endDate, 'campaigns') : $this->_getReportId($beginDate, 'campaigns');
+        $reports_ids = $this->_getReportId($beginDate, $endDate, 'campaigns');
         $counts = count(CampaignReport::getCampaigns($reports_ids));
 
         DB::connection()->enableQueryLog();
@@ -41,8 +40,14 @@ class CampaignsController extends Controller
         $campaigns = CampaignReport::getCampaigns($reports_ids, $skip, $rows);
 
         foreach($campaigns as $campaign){
-            $campaign->adGroupsCount = count(AdGroupsReport::where('campaignId', $campaign->campaignId)
-                ->where('request_report_id', $this->_getReportId($beginDate, 'adGroups'))->get());
+            $reportIds = $this->_getReportId($beginDate, $endDate, 'adGroups');
+            if(count($reportIds)) {
+                $campaign->adGroupsCount = count(AdGroupsReport::where('campaignId', $campaign->campaignId)
+                    ->where('request_report_id', $reportIds[0])->get());
+            } else {
+                $campaign->adGroupsCount = 0;
+            }
+
         }
 
         return response()->json([
@@ -66,25 +71,31 @@ class CampaignsController extends Controller
         $skip = $request->input('skip');
         $rows = $request->input('rows');
 
-        $campaignData = CampaignReport::where('campaignId', $campaignId)
-            ->where('request_report_id', $this->_getReportId($beginDate, 'campaigns'))->first();
-
-        $reportIds = $beginDate && $endDate ? $this->_getReportId($beginDate, $endDate, 'adGroups') :
-            $this->_getReportId($beginDate, 'adGroups');
-
-        $adgroups = AdGroupsReport::getAdgroups($reportIds, $campaignId, $skip, $rows);
-
-        $counts = count(AdGroupsReport::getAdgroups($reportIds, $campaignId));
         $campaign = [
-            'campaign' => [
-                'id' => $campaignData->id,
-                'campaignId' => $campaignData->campaignId,
-                'name' => $campaignData->name,
-                'request_report_id' => $campaignData->request_report_id,
-                'adGroups' => $adgroups
-            ],
-            'counts' => $counts,
+            'campaign' => [],
+            'counts' => 0
         ];
+
+        $campaignData = CampaignReport::where('campaignId', $campaignId)
+            ->whereIn('request_report_id', $this->_getReportId($beginDate, $endDate, 'campaigns'))
+            ->orderBy('created_at', 'DESC')
+            ->first();
+
+        if($campaignData) {
+            $reportIds = $this->_getReportId($beginDate, $endDate, 'adGroups');
+            $adgroups = AdGroupsReport::getAdgroups($reportIds, $campaignId, $skip, $rows);
+            $counts = count(AdGroupsReport::getAdgroups($reportIds, $campaignId));
+            $campaign = [
+                'campaign' => [
+                    'id' => $campaignData->id,
+                    'campaignId' => $campaignData->campaignId,
+                    'name' => $campaignData->name,
+                    'request_report_id' => $campaignData->request_report_id,
+                    'adGroups' => $adgroups
+                ],
+                'counts' => $counts,
+            ];
+        }
 
         return response()->json([
             'status' => true,
@@ -104,29 +115,43 @@ class CampaignsController extends Controller
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
         $rows = $request->input('rows');
-        $campaign = CampaignReport::where('campaignId', $campaignId)->first();
-        $adgroupData = AdGroupsReport::where('adGroupId', $adGroupId)
-            ->where('request_report_id', $this->_getReportId($beginDate, 'adGroups'))->first();
-
-        $reportIds = $beginDate && $endDate ? $this->_getReportId($beginDate, $endDate, 'productAds') :
-            $this->_getReportId($beginDate, 'productAds');
-
-        $productAdsData = ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId, $skip, $rows);
-
-        $counts = count(ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId));
 
         $adGroup = [
-            'adgroup' => [
-                'id' => $adgroupData->id,
-                'adGroupId' => $adgroupData->adGroupId,
-                'campaignName' =>$campaign->name,
-                'campaignId' =>$campaign->campaignId,
-                'name' => $adgroupData->name,
-                'request_report_id' => $adgroupData->request_report_id,
-                'productAds' => $productAdsData
-            ],
-            'counts' => $counts
+            'adgroup' => [],
+            'counts' => 0
         ];
+
+        $campaign = CampaignReport::where('campaignId', $campaignId)
+            ->whereIn('request_report_id', $this->_getReportId($beginDate, $endDate, 'campaigns'))
+            ->orderBy('created_at', 'DESC')
+            ->first();
+        if($campaign) {
+            $adgroupData = AdGroupsReport::where('adGroupId', $adGroupId)
+                ->whereIn('request_report_id', $this->_getReportId($beginDate, $endDate, 'adGroups'))
+                ->orderBy('created_at', 'DESC')
+                ->first();
+
+            if($adgroupData){
+                $reportIds = $this->_getReportId($beginDate, $endDate, 'productAds');
+
+                $productAdsData = ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId, $skip, $rows);
+
+                $counts = count(ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId));
+
+                $adGroup = [
+                    'adgroup' => [
+                        'id' => $adgroupData->id,
+                        'adGroupId' => $adgroupData->adGroupId,
+                        'campaignName' =>$campaign->name,
+                        'campaignId' =>$campaign->campaignId,
+                        'name' => $adgroupData->name,
+                        'request_report_id' => $adgroupData->request_report_id,
+                        'productAds' => $productAdsData
+                    ],
+                    'counts' => $counts
+                ];
+            }
+        }
 
         return response()->json([
             'status' => true,
@@ -147,8 +172,7 @@ class CampaignsController extends Controller
         $skip = $request->input('skip');
         $rows = $request->input('rows');
 
-        $reportIds = $beginDate && $endDate ? $this->_getReportId($beginDate, $endDate, 'keywords') :
-            $this->_getReportId($beginDate, 'keywords');
+        $reportIds = $this->_getReportId($beginDate, $endDate, 'keywords');
 
         $keyWords = KeywordsReport::getKeywords($reportIds, $campaignId, $adGroupId, $skip, $rows);
 
@@ -176,8 +200,6 @@ class CampaignsController extends Controller
         $skip = $request->input('skip');
         $rows = $request->input('rows');
 
-        $adGroup = AdGroupsReport::where('adGroupId', $adGroupId)
-            ->where('request_report_id',  $this->_getReportId($beginDate, 'adGroups'))->first();
         $query = NegativeKeywordsReport::where('adGroupId', $adGroupId);//where('campaignId', $campaignId)->->where('ad_group_id',  $adGroup->id)
 
         if(!is_null($skip) || !is_null($rows)){
@@ -257,20 +279,16 @@ class CampaignsController extends Controller
      * @param $type string
      * @return json response
      */
-    protected function _getReportId($beginDate, $type, $endDate = null) {
-        if(!is_null($endDate)){
-            $report =  RequestReportAPI::where('type', $type)
-                ->whereBetween('amazn_report_date', [$beginDate,$endDate])->first();
-            $result = [];
-            foreach($report as $report_item){
-                array_push($report, $report_item->id);
-            }
-            return $result;
-        }else{
-            $report =  RequestReportAPI::where('type', $type)
-                ->where('amazn_report_date', $beginDate)->first();
-            return array($report->id);
+    protected function _getReportId($beginDate, $endDate, $type) {
+        $report =  RequestReportAPI::where('type', $type)
+            ->whereBetween('amazn_report_date', [$beginDate,$endDate])
+            ->orderBy('amazn_report_date', 'DESC')
+            ->get();
+        $result = [];
+        foreach($report as $report_item){
+            $result[] = $report_item->id;
         }
+        return $result;
     }
 
 }

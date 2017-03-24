@@ -57,8 +57,8 @@ class CampaignReport extends Model
      */
     public static function getCampaigns($reports_ids, $skip = null, $rows = null){
         $query = DB::table('campaign_report')->select(DB::raw('id, request_report_id, campaignId, enabled, name, campaignType, targetingType, premiumBidAdjustment,
-            dailyBudget, startDate, state, avg(clicks) clicks, avg(cost) cost, avg(impressions) impressions, avg(attributedConversions1dSameSKU) attributedConversions1dSameSKU,
-            avg(attributedSales1d) attributedSales1d, avg(attributedConversions1d) attributedConversions1d, avg(attributedSales1dSameSKU) attributedSales1dSameSKU'))
+            dailyBudget, startDate, state, sum(clicks) clicks, sum(cost) cost, sum(impressions) impressions, sum(attributedSales1d) sales,
+            sum(attributedSales1d) attributedSales1d, sum(attributedConversions1d) attributedConversions1d'))
             ->whereIn('request_report_id', $reports_ids)->groupBy('campaignId');
 
         if(!is_null($skip) || !is_null($rows)) return $query->offset($skip)->limit($rows)->get();

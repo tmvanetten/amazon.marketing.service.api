@@ -15,14 +15,6 @@ $app->get('/', function () use ($app) {
     return $app->version();
 });
 
-$app->get('test', [
-    'as' => 'test', 'uses' => 'ExampleController@showDb'
-]);
-/*
-$app->get('campaigns', [
-    'as' => 'campaigns', 'uses' => 'CampaignsController@index'
-]); 
-*/
 $app->group(['prefix' => 'api'], function () use ($app) {
     //route for Capmaigns
 	$app->get('campaigns', [
