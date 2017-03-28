@@ -32,24 +32,17 @@ class CampaignsController extends Controller
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
         $rows = $request->input('rows');
+        $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
+        $criteria = array(
+            'globalFilter' => $request->input('globalFilter'),
+            'sortField' => $request->input('sortField'),
+            'sortOrder' => $sortOrder
+        );
+
         $reports_ids = $this->_getReportId($beginDate, $endDate, 'campaigns');
-        $counts = count(CampaignReport::getCampaigns($reports_ids));
-
-        DB::connection()->enableQueryLog();
-
-        $campaigns = CampaignReport::getCampaigns($reports_ids, $skip, $rows);
-
-        foreach($campaigns as $campaign){
-            $reportIds = $this->_getReportId($beginDate, $endDate, 'adGroups');
-            if(count($reportIds)) {
-                $campaign->adGroupsCount = count(AdGroupsReport::where('campaignId', $campaign->campaignId)
-                    ->where('request_report_id', $reportIds[0])->get());
-            } else {
-                $campaign->adGroupsCount = 0;
-            }
-
-        }
-
+        $adGroupIds = $this->_getReportId($beginDate, $endDate, 'adGroups');
+        $counts = count(CampaignReport::getCampaigns($reports_ids, $criteria, $adGroupIds[0]));
+        $campaigns = CampaignReport::getCampaigns($reports_ids, $criteria, $adGroupIds[0], $skip, $rows);
         return response()->json([
             'status' => true,
             'data' => [
@@ -70,6 +63,12 @@ class CampaignsController extends Controller
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
         $rows = $request->input('rows');
+        $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
+        $criteria = array(
+            'globalFilter' => $request->input('globalFilter'),
+            'sortField' => $request->input('sortField'),
+            'sortOrder' => $sortOrder
+        );
 
         $campaign = [
             'campaign' => [],
@@ -83,8 +82,8 @@ class CampaignsController extends Controller
 
         if($campaignData) {
             $reportIds = $this->_getReportId($beginDate, $endDate, 'adGroups');
-            $adgroups = AdGroupsReport::getAdgroups($reportIds, $campaignId, $skip, $rows);
-            $counts = count(AdGroupsReport::getAdgroups($reportIds, $campaignId));
+            $adgroups = AdGroupsReport::getAdgroups($reportIds, $campaignId, $criteria, $skip, $rows);
+            $counts = count(AdGroupsReport::getAdgroups($reportIds, $campaignId, $criteria));
             $campaign = [
                 'campaign' => [
                     'id' => $campaignData->id,
@@ -115,6 +114,12 @@ class CampaignsController extends Controller
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
         $rows = $request->input('rows');
+        $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
+        $criteria = array(
+            'globalFilter' => $request->input('globalFilter'),
+            'sortField' => $request->input('sortField'),
+            'sortOrder' => $sortOrder
+        );
 
         $adGroup = [
             'adgroup' => [],
@@ -134,9 +139,9 @@ class CampaignsController extends Controller
             if($adgroupData){
                 $reportIds = $this->_getReportId($beginDate, $endDate, 'productAds');
 
-                $productAdsData = ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId, $skip, $rows);
+                $productAdsData = ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId, $criteria, $skip, $rows);
 
-                $counts = count(ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId));
+                $counts = count(ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId, $criteria));
 
                 $adGroup = [
                     'adgroup' => [
@@ -171,12 +176,18 @@ class CampaignsController extends Controller
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
         $rows = $request->input('rows');
+        $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
+        $criteria = array(
+            'globalFilter' => $request->input('globalFilter'),
+            'sortField' => $request->input('sortField'),
+            'sortOrder' => $sortOrder
+        );
 
         $reportIds = $this->_getReportId($beginDate, $endDate, 'keywords');
 
-        $keyWords = KeywordsReport::getKeywords($reportIds, $campaignId, $adGroupId, $skip, $rows);
+        $keyWords = KeywordsReport::getKeywords($reportIds, $campaignId, $adGroupId, $criteria, $skip, $rows);
 
-        $counts = count(KeywordsReport::getKeywords($reportIds, $campaignId, $adGroupId));
+        $counts = count(KeywordsReport::getKeywords($reportIds, $campaignId, $adGroupId, $criteria));
 
         return response()->json([
             'status' => true,
@@ -199,16 +210,31 @@ class CampaignsController extends Controller
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
         $rows = $request->input('rows');
+        $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
+        $criteria = array(
+            'globalFilter' => $request->input('globalFilter'),
+            'sortField' => $request->input('sortField'),
+            'sortOrder' => $sortOrder
+        );
 
-        $query = NegativeKeywordsReport::where('adGroupId', $adGroupId);//where('campaignId', $campaignId)->->where('ad_group_id',  $adGroup->id)
+        $counts = 0;
 
+        $adgroup = AdGroupsReport::where('adGroupId', $adGroupId)->where('campaignId',  $campaignId)->first();
+
+        $query = NegativeKeywordsReport::where('ad_group_id', $adgroup->id);//where('campaignId', $campaignId)->
+
+        if(!empty($criteria['globalFilter'])) $query = $query->where('keywordText', 'LIKE', '%' . $criteria['globalFilter'] . '%');
+
+        if($criteria['sortField'] && $criteria['sortOrder'])
+            $query = $query->orderBy($criteria['sortField'], $criteria['sortOrder']);
+
+        $counts = count($query->distinct()->get());
         if(!is_null($skip) || !is_null($rows)){
-            $nkeyWords = $query->offset($skip)->limit($rows)->get();
+            $nkeyWords = $query->offset($skip)->limit($rows)->distinct()->get();
         }else{
-            $nkeyWords = $query->get();
+            $nkeyWords = $query->distinct()->get();
         }
 
-        $counts = count($nkeyWords);
         return response()->json([
             'status' => true,
             'data' => [

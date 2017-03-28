@@ -47,7 +47,7 @@ class RequestApiReportsHelper
     public function __construct()
     {
         $this->_past_seven_days_date = $this->_getPastDayDate(7);
-        $this->_past_thirty_days_date = $this->_getPastDayDate(30);
+        $this->_past_hundred_twenty_days_date = $this->_getPastDayDate(120);
         $this->_amazon_config = $this->_getAmazonConfig();
         $this->_report_types = $this->_getReportTypes();
     }
@@ -105,6 +105,7 @@ class RequestApiReportsHelper
         $data = $request['response'];
         $profileData = json_decode($data);
         foreach($profileData as $profile) {
+            if($profile->profileId == 2727303786791345) continue;
             $client->profileId = $profile->profileId;
             foreach($this->_report_types as $reportType) {
                 $day = 1;
@@ -117,7 +118,7 @@ class RequestApiReportsHelper
                 }
             }
         }
-        $this->_deleteOlderThan30Days();
+        $this->_deleteOlderThan120Days();
         return array(
           'status' => true,
           'message' => 'Ok',
@@ -194,8 +195,8 @@ class RequestApiReportsHelper
      * Delete data that has been stored over 30 days.
      * @return boolean
      */
-    protected function _deleteOlderThan30Days(){
-        $items = RequestReportAPI::where('amazn_report_date', '<', $this->_past_thirty_days_date)->delete();
+    protected function _deleteOlderThan120Days(){
+        $items = RequestReportAPI::where('amazn_report_date', '<', $this->_past_hundred_twenty_days_date)->delete();
         return $items;
     }
 }

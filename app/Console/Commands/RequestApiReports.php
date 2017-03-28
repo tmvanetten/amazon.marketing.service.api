@@ -38,21 +38,12 @@ class RequestApiReports extends Command
      */
     public function handle()
     {
-        $this->info(' ');
-        $this->info('--- Start Command ---');
-        $this->info(' ');
         $executeRequest = new RequestApiReportsHelper();
         $result = $executeRequest->requestAmazonReports();
         if ($result['status']) {
-            $this->info(' ');
-            $this->info($result['quantity'] . ' report created & saved to database ');
-            $this->info(' ');
+            $this->info($result['quantity'] . ' report created & saved to database Date:' . date("Ymd h:i:s A"));
         } else {
-            $this->info(' ');
             $this->error($result['message']);
-            $this->info(' ');
         }
-        $this->info(' ');
-        $this->info('--- Finish Command ---');
     }
 }

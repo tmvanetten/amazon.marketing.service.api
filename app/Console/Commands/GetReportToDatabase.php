@@ -47,9 +47,6 @@ class GetReportToDatabase extends Command
      */
     public function handle()
     {
-        $this->info(' ');
-        $this->info('--- Start Command ---');
-        $this->info(' ');
         $dates = [
             'yesterday' => date("Ymd", time() - 60 * 60 * 24),
             'pastTwoDays' => date("Ymd", time() - 60 * 60 * 48),
@@ -88,7 +85,7 @@ class GetReportToDatabase extends Command
                             if(isset($dataItem['campaignId'])){
                                 $requestCampaignData = $client->getCampaign($dataItem['campaignId']);
                                 if($requestCampaignData['success']) {
-                                    var_dump($requestCampaignData);
+                                    //var_dump($requestCampaignData);
                                     $campaignData = json_decode($requestCampaignData['response']);
                                     $campaignData = (array) $campaignData;
                                     $result = $this->prepareData($campaignData, $dataItem);
@@ -108,7 +105,7 @@ class GetReportToDatabase extends Command
                         } else if ($item->type == 'adGroups') {
                             if(isset($dataItem['adGroupId'])) {
                                 $requestAdGroupData = $client->getAdGroup($dataItem['adGroupId']);
-                                var_dump($requestAdGroupData);
+                                //var_dump($requestAdGroupData);
                                 if ($requestAdGroupData['success']) {
                                     $adGroupData = json_decode($requestAdGroupData['response']);
                                     $adGroupData = (array)$adGroupData;
@@ -138,7 +135,7 @@ class GetReportToDatabase extends Command
                         } else if ($item->type == 'keywords') {
                             if(isset($dataItem['keywordId'])) {
                                 $requestKeywordData = $client->getBiddableKeyword($dataItem['keywordId']);
-                                var_dump($requestKeywordData);
+                                //var_dump($requestKeywordData);
                                 if ($requestKeywordData['success']) {
                                     $keywordData = json_decode($requestKeywordData['response']);
                                     $keywordData = (array)$keywordData;
@@ -161,7 +158,7 @@ class GetReportToDatabase extends Command
                         } else if ($item->type == 'productAds') {
                             if(isset($dataItem['adId'])){
                                 $requestAdData = $client->getProductAd($dataItem['adId']);
-                                var_dump($requestAdData);
+                                //var_dump($requestAdData);
                                 if($requestAdData['success']) {
                                     $adData = json_decode($requestAdData['response']);
                                     $adData = (array) $adData;
@@ -218,12 +215,8 @@ class GetReportToDatabase extends Command
         }
 
         if ($totalCompleted) {
-            $this->info(' ');
-            $this->info($totalCompleted . ' report item generated & save to database ');
-            $this->info(' ');
+            $this->info($totalCompleted . ' report item generated & save to database Date:' . date("Ymd h:i:s A"));
         }
-        $this->info(' ');
-        $this->info('--- Finish Command ---');
     }
 
     /**
