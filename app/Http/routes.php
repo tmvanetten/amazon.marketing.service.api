@@ -52,4 +52,12 @@ $app->group(['prefix' => 'api'], function () use ($app) {
     $app->post('strategy', [
         'as' => 'strategy', 'uses' => 'App\Http\Controllers\StrategyController@saveStrategy'
     ]);
+    //route to upload search term
+    $app->post('uploadsearchterm', [
+        'as' => 'uploadsearchterm', 'uses' => 'App\Http\Controllers\SearchtermController@upload'
+    ]);
+    //route to get search term
+    $app->get('searchterm', [
+        'as' => 'searchterm', 'uses' => 'App\Http\Controllers\SearchtermController@get'
+    ]);
 });
