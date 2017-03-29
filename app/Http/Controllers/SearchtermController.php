@@ -34,11 +34,18 @@ class SearchtermController extends Controller
         ];
         $skip = $request->input('skip');
         $rows = $request->input('rows');
+        $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
+        $criteria = array(
+            'globalFilter' => $request->input('globalFilter'),
+            'sortField' => $request->input('sortField'),
+            'sortOrder' => $sortOrder
+        );
         $campaingName = $request->input('campaingName');
         $adGroupName = $request->input('adGroupName');
         $keyWordName = $request->input('keyWordName');
         $matchType = $request->input('matchType');
         try{
+            $model = new Searchterm;
             if($campaingName || $adGroupName || $keyWordName) {
                 $wheres = [];
                 if($campaingName)
@@ -49,12 +56,14 @@ class SearchtermController extends Controller
                     $wheres['keyworod'] = $keyWordName;
                 if($matchType)
                     $wheres['match_type'] = $matchType;
-                $result['searchterms'] = Searchterm::where($wheres)->offset($skip)->limit($rows)->get();
-                $result['count'] = Searchterm::where($wheres)->count();
-            } else {
-                $result['searchterms'] = Searchterm::take($rows)->offset($skip)->get();
-                $result['count'] = count(Searchterm::all());
+                $model = $model->where($wheres);
             }
+            if($criteria['globalFilter'])
+                $model = $model->where('customer_search_term', 'LIKE', '%' . $criteria['globalFilter'] . '%');
+            if($criteria['sortField'] && $criteria['sortOrder'])
+            $model = $model->orderBy($criteria['sortField'], $criteria['sortOrder']);
+            $result['count'] = $model->count();
+            $result['searchterms'] = $model->offset($skip)->limit($rows)->get();
         }catch (\Exception $e) {
             return response()->json(['errors' => [$e->getMessage()]], 422);
         }
