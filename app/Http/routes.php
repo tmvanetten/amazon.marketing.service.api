@@ -60,4 +60,8 @@ $app->group(['prefix' => 'api'], function () use ($app) {
     $app->get('searchterm', [
         'as' => 'searchterm', 'uses' => 'App\Http\Controllers\SearchtermController@get'
     ]);
+    $app->get('searchtermoption', [
+        'as' => 'searchtermoption', 'uses' => 'App\Http\Controllers\SearchtermController@getSearchtermOption'
+    ]);
+
 });

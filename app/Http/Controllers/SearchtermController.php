@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests;
 use Illuminate\Http\Request;
 use App\Model\Searchterm;
+use App\Model\Campaigns;
+use App\Model\Adgroups;
+use App\Model\CampaignConnection;
 use App\Model\SearchtermUploadException;
 
 class SearchtermController extends Controller
@@ -53,6 +56,79 @@ class SearchtermController extends Controller
                 $result['count'] = count(Searchterm::all());
             }
         }catch (\Exception $e) {
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
+        return response()->json(['data' => $result], 200);
+    }
+
+    /**
+     * get search term options
+     *
+     * @return json response
+     */
+    public function getSearchtermOption(Request $request) {
+        $result = [
+            'default_campaign' => '',
+            'default_adgroup' => '',
+            'campaigns' => [],
+            'combo_campaigns' => []
+        ];
+        $campaingName = $request->input('campaingName');
+        $adGroupName = $request->input('adGroupName');
+        try{
+            //get default campaign
+            $defaultCampaign = Campaigns::where([
+                'name' => $campaingName,
+            ])->first();
+            //if campaign is auto and related get its manual counter part
+            if($defaultCampaign->targeting_type == 'auto') {
+                $campaignConnectionModel = CampaignConnection::where('auto_id', $defaultCampaign->id)->first();
+                if($campaignConnectionModel) {
+                    $campaignModel = Campaigns::find($campaignConnectionModel->manual_id);
+                    if($campaignModel)
+                        $defaultCampaign = $campaignModel;
+                }
+            }
+            //get default ad group if there is default campaign
+            if($defaultCampaign) {
+                $result['default_campaign'] = $defaultCampaign->id;
+                $defaultAdgroup = Adgroups::where([
+                    'campaign_id' => $defaultCampaign->id,
+                    'name' => $adGroupName,
+                ])->first();
+                if($defaultAdgroup)
+                    $result['default_adgroup'] = $defaultAdgroup->id;
+            }
+            //get campaigns info
+            $campaignModels = Campaigns::where('targeting_type', 'manual')->orderBy('name', 'ASC')->get(['id', 'name']);
+            foreach($campaignModels as $campaignModel) {
+                $campaignModel->adgroupsSimple;
+            }
+            $result['campaigns'] = $campaignModels;
+            //get get campaigns and assciated campaigns info
+            $comboCampaigns = [];
+            $campaignModels = Campaigns::orderBy('name', 'ASC')->get();
+            foreach($campaignModels as $campaignModel) {
+                $comboCampaigns[$campaignModel->id] = $campaignModel;
+            }
+            $campaignConnections = CampaignConnection::all();
+            foreach($campaignConnections as $campaignConnection) {
+                $manualampaign = Campaigns::find($campaignConnection->manual_id);
+                $autoCampaign = Campaigns::find($campaignConnection->auto_id);
+                if($manualampaign && $autoCampaign) {
+                    $manualCampaignName = $manualampaign->name;
+                    $autoCampaignName = $autoCampaign->name;
+                    $manualampaign->name = "| $manualCampaignName | AND | $autoCampaignName |";
+                    $comboCampaigns[$manualampaign->id] = $manualampaign;
+                    unset($comboCampaigns[$autoCampaign->id]);
+                }
+            }
+            foreach($comboCampaigns as $comboCampaign) {
+                $result['combo_campaigns'][] = $comboCampaign;
+            }
+
+        }catch (\Exception $e) {
+
             return response()->json(['errors' => [$e->getMessage()]], 422);
         }
         return response()->json(['data' => $result], 200);
