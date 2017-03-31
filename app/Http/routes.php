@@ -20,6 +20,22 @@ $app->group(['prefix' => 'api'], function () use ($app) {
 	$app->get('campaigns', [
         'as' => 'campaigns', 'uses' => 'App\Http\Controllers\CampaignsController@index'
     ]);
+    //route to get campaigns list
+    $app->get('listCampaigns', [
+        'as' => 'listCampaigns', 'uses' => 'App\Http\Controllers\CampaignsController@listCampaigns'
+    ]);
+    //route to get connected campaigns
+    $app->get('connectedCampaigns', [
+        'as' => 'connectedCampaigns', 'uses' => 'App\Http\Controllers\CampaignsController@getConnectedCampaigns'
+    ]);
+    //route to connect campaigns manually
+    $app->post('connectCampaignsManual', [
+        'as' => 'connectCampaignsManual', 'uses' => 'App\Http\Controllers\CampaignsController@manuallyConnectCampaigns'
+    ]);
+    //route to connect campaigns automatically
+    $app->get('connectCampaignsAuto', [
+        'as' => 'connectCampaignsAuto', 'uses' => 'App\Http\Controllers\CampaignsController@automaticConnect'
+    ]);
     //route for Campaign
     $app->get('campaign', [
         'as' => 'campaign', 'uses' => 'App\Http\Controllers\CampaignsController@getCampaignById'
