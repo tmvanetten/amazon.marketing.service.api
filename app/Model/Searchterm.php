@@ -93,6 +93,8 @@ class Searchterm extends Model
                     $fieldValue = $item[$field['index']];
                     if($field['code']=='ctr' || $field['code']=='acos' )
                         $fieldValue = rtrim($fieldValue, '%');
+                    if($field['code']=='customer_search_term')
+                        $fieldValue = trim(htmlspecialchars_decode($fieldValue), "\t\n\r\0\x0B\xC2\xA0");
                     $lineToInsert[$field['code']] = $fieldValue;
                 }
                 $dataToInsert[] = $lineToInsert;

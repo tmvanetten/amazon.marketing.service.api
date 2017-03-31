@@ -9,6 +9,10 @@ use App\Model\Campaigns;
 use App\Model\Adgroups;
 use App\Model\CampaignConnection;
 use App\Model\SearchtermUploadException;
+use App\Model\SearchTermHistory;
+use App\Model\SearchTermDate;
+use App\Helpers\AmazonAPI;
+use DB;
 
 class SearchtermController extends Controller
 {
@@ -22,6 +26,13 @@ class SearchtermController extends Controller
         //
     }
 
+    public function getDateModel() {
+        $model = SearchTermDate::first();
+        if(!$model)
+            $model = new SearchTermDate();
+        return $model;
+    }
+
     /**
      * get search terms data
      *
@@ -29,8 +40,10 @@ class SearchtermController extends Controller
      */
     public function get(Request $request) {
         $result = [
-          'searchterms' => [],
-          'count' => 0
+            'searchterms' => [],
+            'count' => 0,
+            'beginDate' => '',
+            'endDate' => ''
         ];
         $skip = $request->input('skip');
         $rows = $request->input('rows');
@@ -41,15 +54,17 @@ class SearchtermController extends Controller
             'sortOrder' => $sortOrder
         );
         $campaingName = $request->input('campaingName');
+        $campaingNames = explode(',', $campaingName);
         $adGroupName = $request->input('adGroupName');
         $keyWordName = $request->input('keyWordName');
         $matchType = $request->input('matchType');
         try{
             $model = new Searchterm;
-            if($campaingName || $adGroupName || $keyWordName) {
+            if($campaingNames) {
+                $model = $model ->whereIn('campaign_name', $campaingNames);
+            }
+            if($adGroupName || $keyWordName) {
                 $wheres = [];
-                if($campaingName)
-                    $wheres['campaign_name'] = $campaingName;
                 if($adGroupName)
                     $wheres['adgroup_name'] = $adGroupName;
                 if($keyWordName)
@@ -60,14 +75,170 @@ class SearchtermController extends Controller
             }
             if($criteria['globalFilter'])
                 $model = $model->where('customer_search_term', 'LIKE', '%' . $criteria['globalFilter'] . '%');
-            if($criteria['sortField'] && $criteria['sortOrder'])
-            $model = $model->orderBy($criteria['sortField'], $criteria['sortOrder']);
+
             $result['count'] = $model->count();
+            if($criteria['sortField'] && $criteria['sortOrder'])
+                $model = $model->orderBy($criteria['sortField'], $criteria['sortOrder']);
+
+            $model->select('*');
+            $model->addSelect(DB::raw('(select count(*) from search_term_history WHERE search_terms_report.customer_search_term = search_term_history.search_term) as history_count'));
             $result['searchterms'] = $model->offset($skip)->limit($rows)->get();
+            $dateModel = $this->getDateModel();
+            $result['beginDate'] = $dateModel->beginDate;
+            $result['endDate'] = $dateModel->endDate;
         }catch (\Exception $e) {
             return response()->json(['errors' => [$e->getMessage()]], 422);
         }
         return response()->json(['data' => $result], 200);
+    }
+
+    /**
+     * crate positive keyword
+     *
+     * @param Request $request
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function createPositiveKeyword(Request $request) {
+        $adgroupId = $request->input('adgroupId');
+        $campaignId = $request->input('campaignId');
+        $matchType = $request->input('matchType');
+        $searchTerm = trim($request->input('searchTerm'));
+
+        if(!$adgroupId)
+            return response()->json(['Please select a Ad Group!'], 400);
+        if(!$campaignId)
+            return response()->json(['Please select a Campaign!'], 400);
+        if(!$matchType)
+            return response()->json(['Please select a match type!'], 400);
+        if(!$searchTerm)
+            return response()->json(['Please enter a search term!'], 400);
+
+        $campaign = Campaigns::find($campaignId);
+        if(!$campaign)
+            return response()->json(['Campaign not found!'], 400);
+
+        $adgroup = Adgroups::find($adgroupId);
+        if(!$adgroup)
+            return response()->json(['Ad Group not found!'], 400);
+
+        try{
+            //call amazon api to create a new keyword
+            $amazonAPI = new AmazonAPI;
+            $keywords = [
+                    'campaignId' => $campaignId,
+                    'adGroupId' => $adgroupId,
+                    'keywordText' => $searchTerm,
+                    'matchType' => $matchType,
+                    'state' => 'enabled'
+                ];
+            $responses = $amazonAPI->createPositiveKeyword($keywords);
+            $campaignName = $campaign->name;
+            $adgroupName = $adgroup->name;
+            if($responses[0]['code'] != 'DUPLICATE') {
+                $message = "Successfully created added keyword $searchTerm to $campaignName > $adgroupName, match type: $matchType";
+                //create history entry for the action
+                SearchTermHistory::create([
+                    'search_term' => $searchTerm,
+                    'message' => $message,
+                    'type' => 'positive',
+                    'campaign_id' => $campaignId,
+                    'ad_group_id' => $adgroupId,
+                    'match_type' => $matchType
+                ]);
+            } else {
+                $message = "Keyword $searchTerm was already added to $campaignName > $adgroupName, match type: $matchType";
+            }
+        }catch (\Exception $e) {
+            return response()->json([$e->getMessage()], 500);
+        }
+        return response()->json(['data' => [$message]], 200);
+
+    }
+
+    /**
+     * create negative keywords
+     *
+     * @param Request $request
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function createNegativeKeyword(Request $request) {
+        $campaignId = $request->input('campaignId');
+        $matchType = $request->input('matchType');
+        $searchTerm = trim($request->input('searchTerm'));
+
+        if(!$campaignId)
+            return response()->json(['Please select a Campaign!'], 400);
+        if(!$matchType)
+            return response()->json(['Please select a match type!'], 400);
+        if(!$searchTerm)
+            return response()->json(['Please enter a search term!'], 400);
+
+        $campaign = Campaigns::find($campaignId);
+        if(!$campaign)
+            return response()->json(['Campaign not found!'], 400);
+
+        try{
+            $amazonAPI = new AmazonAPI;
+            $keywords = [];
+            $entries = [];
+            $campaigns = [$campaign];
+            $messages = [];
+            //get manual campaign's auto counter part, if it exists
+            $campaignConnection = CampaignConnection::where('manual_id', $campaign->id)->first();
+            if($campaignConnection) {
+                $autoCampaign = Campaigns::find($campaignConnection->auto_id);
+                if($autoCampaign)
+                    $campaigns[] = $autoCampaign;
+            }
+
+            foreach($campaigns as $campaign) {
+                $adgroups = $campaign->adgroupsSimple;
+                foreach($adgroups as $adgroup) {
+                    $entries[] = [
+                        'campaignName' =>  $campaign->name,
+                        "campaignId" => $campaign->id,
+                        'adgroupName' =>  $adgroup->name,
+                        "adGroupId" => $adgroup->id,
+                    ];
+                    $keywords[] = [
+                        "campaignId" => $campaign->id,
+                        "adGroupId" => $adgroup->id,
+                        "keywordText" => $searchTerm,
+                        "matchType" => $matchType,
+                        "state" => "enabled"
+                    ];
+                }
+            }
+            //call amazon api to create a new keyword
+            $responses = $amazonAPI->createNegativeKeywords($keywords);
+            foreach($responses as $index => $response) {
+                if(isset($entries[$index])) {
+                    $entry = $entries[$index];
+                    $campaignName = $entry['campaignName'];
+                    $adgroupName = $entry['adgroupName'];
+                    $campaignId = $entry['campaignId'];
+                    $adgroupId = $entry['adGroupId'];
+                    if($response['code'] != 'DUPLICATE') {
+                        $message = "Successfully added keyword $searchTerm to $campaignName > $adgroupName, match type: $matchType";
+                        $messages[] = $message;
+                        //create history entry for the action
+                        SearchTermHistory::create([
+                            'search_term' => $searchTerm,
+                            'message' => $message,
+                            'type' => 'negative',
+                            'campaign_id' => $campaignId,
+                            'ad_group_id' => $adgroupId,
+                            'match_type' => $matchType
+                        ]);
+                    } else {
+                        $messages[] = "Keyword $searchTerm was already added to $campaignName > $adgroupName, match type: $matchType";
+                    }
+                }
+            }
+        }catch (\Exception $e) {
+            return response()->json([$e->getMessage()], 500);
+        }
+        return response()->json(['data' => $messages], 200);
     }
 
     /**
@@ -144,6 +315,54 @@ class SearchtermController extends Controller
     }
 
     /**
+     * get Search term action history
+     *
+     * @param Request $request
+     */
+    public function getSearchtermHistory(Request $request) {
+        $result = [
+            'histories' => [],
+            'count' => 0
+        ];
+        $skip = $request->input('skip');
+        $rows = $request->input('rows');
+        $searchTerm = $request->input('searchTerm');
+        $campaignId = $request->input('campaignId');
+        $adgroupId = $request->input('adgroupId');
+        $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
+        $criteria = array(
+            'globalFilter' => $request->input('globalFilter'),
+            'sortField' => $request->input('sortField'),
+            'sortOrder' => $sortOrder
+        );
+
+        try{
+            $model = new SearchTermHistory;
+            if($campaignId) {
+                $campaignId = explode(',', $campaignId);
+                $model = $model ->whereIn('campaign_id', $campaignId);
+            }
+            if($searchTerm || $adgroupId) {
+                $wheres = [];
+                if($searchTerm)
+                    $wheres['search_term'] = $searchTerm;
+                if($adgroupId)
+                    $wheres['ad_group_id'] = $adgroupId;
+                $model = $model->where($wheres);
+            }
+            if($criteria['globalFilter'])
+                $model = $model->where('search_term', 'LIKE', '%' . $criteria['globalFilter'] . '%');
+            $result['count'] = $model->count();
+            if($criteria['sortField'] && $criteria['sortOrder'])
+                $model = $model->orderBy($criteria['sortField'], $criteria['sortOrder']);
+            $result['histories'] = $model->offset($skip)->limit($rows)->get();
+        }catch (\Exception $e) {
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
+        return response()->json(['data' => $result], 200);
+    }
+
+    /**
      * upload search terms data
      *
      * @return json response
@@ -157,9 +376,20 @@ class SearchtermController extends Controller
             break;
         }
         try{
+            $name = str_replace('search-term-report-', '', $name);
+            $name = explode('-', $name);
+            if(!is_array($name) || count($name) < 3 || !is_numeric($name[0]) || !is_numeric($name[1]) || !is_numeric($name[2])) {
+                throw new \Exception('Incorrect file name can not find file date!');
+            }
+            $beginDate = date("Y-m-d", strtotime($name[0].'-'.$name[1].'-'.$name[2]));
+            $endDate = date("Y-m-d", strtotime($name[0].'-'.$name[1].'-'.$name[2] . ' + 2 months - 1 days'));
             Searchterm::truncate();
             $searchTerm = new Searchterm();
             $searchTerm->upload($uploadedFileString);
+            $dateModel = $this->getDateModel();
+            $dateModel->beginDate = $beginDate;
+            $dateModel->endDate = $endDate;
+            $dateModel->save();
         }catch (SearchtermUploadException $e){
             return response()->json(['errors' => [$e->getMessage()]], 422);
         }catch (\Exception $e) {

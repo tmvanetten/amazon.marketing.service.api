@@ -335,11 +335,7 @@ class GetReportToDatabase extends Command
     }
 
     protected function _downloadProductAds() {
-        $request = $this->client->listProductAds(array("stateFilter" => "enabled"));
-        if(!$request['success'])
-            return 'Error: Listing Product Ads.';
-        $data = $request['response'];
-        $productAds = json_decode($data, true);
+        $campaignsInDb = Campaigns::all();
         //retrive product Ads data from db
         $productAdsInDb = ProductAds::all();
         $productAdsIdsInDb = [];
@@ -348,35 +344,41 @@ class GetReportToDatabase extends Command
             $productAdsIdsInDb[] = $productAdInDb->id;
             $productAdModels[$productAdInDb->id] = $productAdInDb;
         }
-
-        //create or update product Ads data in db
-        foreach($productAds as $productAd) {
-            $data = [
-                'id' => $productAd['adId'],
-                'ad_group_id' => $productAd['adGroupId'],
-                'campaign_id' => $productAd['campaignId'],
-                'sku' => $productAd['sku'],
-                'asin' => isset($productAd['asin']) ? $productAd['asin'] : '',
-                'state' => $productAd['state']
-            ];
-            try{
-                if(in_array($data['id'], $productAdsIdsInDb)) {
-                    if(isset($productAdModels[$data['id']])) {
-                        $this->_updateModel($productAdModels[$data['id']], $data)->save();
+        foreach($campaignsInDb as $campaign) {
+            $request = $this->client->listProductAds(array("campaignIdFilter" => $campaign->id, "stateFilter" => "enabled"));
+            if(!$request['success'])
+                return 'Error: Listing Product Ads.';
+            $data = $request['response'];
+            $productAds = json_decode($data, true);
+            //create or update product Ads data in db
+            foreach($productAds as $productAd) {
+                $data = [
+                    'id' => $productAd['adId'],
+                    'ad_group_id' => $productAd['adGroupId'],
+                    'campaign_id' => $productAd['campaignId'],
+                    'sku' => $productAd['sku'],
+                    'asin' => isset($productAd['asin']) ? $productAd['asin'] : '',
+                    'state' => $productAd['state']
+                ];
+                try{
+                    if(in_array($data['id'], $productAdsIdsInDb)) {
+                        if(isset($productAdModels[$data['id']])) {
+                            $this->_updateModel($productAdModels[$data['id']], $data)->save();
+                        }
+                        unset($productAdModels[$data['id']]);
+                    } else {
+                        ProductAds::create($data);
                     }
-                    unset($productAdModels[$data['id']]);
-                } else {
-                    ProductAds::create($data);
+                }catch (\Exception $e) {
+                    //ignore table contrain foregin key exception
                 }
-            }catch (\Exception $e) {
-                //ignore table contrain foregin key exception
             }
         }
-
         //delete product Ads data that are no longer used
         foreach($productAdModels as $productAdModel) {
             $productAdModel->delete();
         }
+
         return $this;
     }
 

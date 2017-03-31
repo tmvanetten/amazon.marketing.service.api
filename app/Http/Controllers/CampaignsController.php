@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Model\Adgroups;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\RequestReportAPI;
@@ -10,6 +11,11 @@ use App\ProductAdsReport;
 use App\KeywordsReport;
 use App\NegativeKeywordsReport;
 use App\CampaignReport;
+use App\Model\Campaigns;
+use App\Model\CampaignConnection;
+use App\Model\ProductAds;
+use App\Model\Keywords;
+
 class CampaignsController extends Controller
 {
     /**
@@ -28,6 +34,10 @@ class CampaignsController extends Controller
      * @return json response
      */
     public function index(Request $request) {
+        $result = [
+            'counts' => 0,
+            'campaigns' => []
+        ];
         $beginDate = $request->input('beginDate');
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
@@ -39,16 +49,11 @@ class CampaignsController extends Controller
             'sortOrder' => $sortOrder
         );
 
-        $reports_ids = $this->_getReportId($beginDate, $endDate, 'campaigns');
-        $adGroupIds = $this->_getReportId($beginDate, $endDate, 'adGroups');
-        $counts = count(CampaignReport::getCampaigns($reports_ids, $criteria, $adGroupIds[0]));
-        $campaigns = CampaignReport::getCampaigns($reports_ids, $criteria, $adGroupIds[0], $skip, $rows);
+        $result['campaigns'] = Campaigns::getCampaigns($criteria, $beginDate, $endDate, $skip, $rows);
+        $result['counts'] = Campaigns::getCampaignsCount($criteria, $beginDate, $endDate);
+
         return response()->json([
-            'status' => true,
-            'data' => [
-                'campaigns' => $campaigns,
-                'counts' => $counts
-            ]
+            'data' => $result
         ]);
     }
 
@@ -70,36 +75,47 @@ class CampaignsController extends Controller
             'sortOrder' => $sortOrder
         );
 
-        $campaign = [
-            'campaign' => [],
+        $result = [
+            'adgroups' => [],
             'counts' => 0
         ];
 
-        $campaignData = CampaignReport::where('campaignId', $campaignId)
-            ->whereIn('request_report_id', $this->_getReportId($beginDate, $endDate, 'campaigns'))
-            ->orderBy('created_at', 'DESC')
-            ->first();
+        $result['adgroups'] = Adgroups::getAdgroups($campaignId, $criteria, $beginDate, $endDate, $skip, $rows);
+        $result['counts'] = Adgroups::getAdgroupCount($campaignId, $criteria, $beginDate, $endDate);
 
-        if($campaignData) {
-            $reportIds = $this->_getReportId($beginDate, $endDate, 'adGroups');
-            $adgroups = AdGroupsReport::getAdgroups($reportIds, $campaignId, $criteria, $skip, $rows);
-            $counts = count(AdGroupsReport::getAdgroups($reportIds, $campaignId, $criteria));
-            $campaign = [
-                'campaign' => [
-                    'id' => $campaignData->id,
-                    'campaignId' => $campaignData->campaignId,
-                    'name' => $campaignData->name,
-                    'request_report_id' => $campaignData->request_report_id,
-                    'adGroups' => $adgroups
-                ],
-                'counts' => $counts,
-            ];
+        return response()->json(['data' => $result]);
+    }
+
+    public function getCampaignConnection(Request $request) {
+        $campaigns = [];
+        $campaignId = $request->input('campaignId');
+        try{
+            $campaign = Campaigns::find($campaignId);
+            if(!$campaign)
+                return response()->json(['Campaign not found!'], 400);
+
+            $campaigns[$campaign->targeting_type] = $campaign;
+            //get campaign's auto counter part, if it exists
+            if($campaign->targeting_type == 'auto') {
+                $campaignConnection = CampaignConnection::where('auto_id', $campaign->id)->first();
+                if($campaignConnection) {
+                    $maunalCampaign = Campaigns::find($campaignConnection->manual_id);
+                    if($maunalCampaign)
+                        $campaigns[$maunalCampaign->targeting_type] = $maunalCampaign;
+                }
+            }
+            if($campaign->targeting_type == 'manual') {
+                $campaignConnection = CampaignConnection::where('manual_id', $campaign->id)->first();
+                if($campaignConnection) {
+                    $autoCampaign = Campaigns::find($campaignConnection->auto_id);
+                    if($autoCampaign)
+                        $campaigns[$autoCampaign->targeting_type] = $autoCampaign;
+                }
+            }
+        }catch (\Exception $e) {
+            return response()->json([$e->getMessage()], 500);
         }
-
-        return response()->json([
-            'status' => true,
-            'data' => $campaign
-        ]);
+        return response()->json(['data' => $campaigns], 200);
     }
 
     /**
@@ -121,47 +137,29 @@ class CampaignsController extends Controller
             'sortOrder' => $sortOrder
         );
 
-        $adGroup = [
-            'adgroup' => [],
-            'counts' => 0
-        ];
+        try{
+            $campaign = Campaigns::find($campaignId);
+            if(!$campaign)
+                return response()->json(['Campaign not found!'], 400);
+            $adgroup = Adgroups::find($adGroupId);
+            if(!$adgroup)
+                return response()->json(['Ad group not found!'], 400);
+            $adGroup = [
+                'adgroup' => [
+                    'id' => $adgroup->id,
+                    'adGroupId' => $adgroup->id,
+                    'campaignName' =>$campaign->name,
+                    'campaignId' =>$campaign->id,
+                    'name' => $adgroup->name,
+                    'productAds' => ProductAds::getProductAds($campaignId, $adGroupId, $criteria, $beginDate, $endDate, $skip, $rows)
+                ],
+                'counts' => ProductAds::getProductAdsCount($campaignId, $adGroupId, $criteria)
+            ];
 
-        $campaign = CampaignReport::where('campaignId', $campaignId)
-            ->whereIn('request_report_id', $this->_getReportId($beginDate, $endDate, 'campaigns'))
-            ->orderBy('created_at', 'DESC')
-            ->first();
-        if($campaign) {
-            $adgroupData = AdGroupsReport::where('adGroupId', $adGroupId)
-                ->whereIn('request_report_id', $this->_getReportId($beginDate, $endDate, 'adGroups'))
-                ->orderBy('created_at', 'DESC')
-                ->first();
-
-            if($adgroupData){
-                $reportIds = $this->_getReportId($beginDate, $endDate, 'productAds');
-
-                $productAdsData = ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId, $criteria, $skip, $rows);
-
-                $counts = count(ProductAdsReport::getProductAds($reportIds, $campaignId, $adGroupId, $criteria));
-
-                $adGroup = [
-                    'adgroup' => [
-                        'id' => $adgroupData->id,
-                        'adGroupId' => $adgroupData->adGroupId,
-                        'campaignName' =>$campaign->name,
-                        'campaignId' =>$campaign->campaignId,
-                        'name' => $adgroupData->name,
-                        'request_report_id' => $adgroupData->request_report_id,
-                        'productAds' => $productAdsData
-                    ],
-                    'counts' => $counts
-                ];
-            }
+        }catch (\Exception $e) {
+            return response()->json([$e->getMessage()], 500);
         }
-
-        return response()->json([
-            'status' => true,
-            'data' => $adGroup
-        ]);
+        return response()->json(['data' => $adGroup], 200);
     }
 
     /**
@@ -170,6 +168,10 @@ class CampaignsController extends Controller
      * @return json response
      */
     public function getKeywords(Request $request) {
+        $result = [
+            'keywords' => [],
+            'counts' => 0
+        ];
         $campaignId = $request->input('campaignId');
         $adGroupId = $request->input('adGroupId');
         $beginDate = $request->input('beginDate');
@@ -182,20 +184,13 @@ class CampaignsController extends Controller
             'sortField' => $request->input('sortField'),
             'sortOrder' => $sortOrder
         );
-
-        $reportIds = $this->_getReportId($beginDate, $endDate, 'keywords');
-
-        $keyWords = KeywordsReport::getKeywords($reportIds, $campaignId, $adGroupId, $criteria, $skip, $rows);
-
-        $counts = count(KeywordsReport::getKeywords($reportIds, $campaignId, $adGroupId, $criteria));
-
-        return response()->json([
-            'status' => true,
-            'data' => [
-                'keywords' => $keyWords,
-                'counts' => $counts
-            ]
-        ]);
+        try{
+            $result['keywords'] = Keywords::getKeywords($campaignId, $adGroupId, $criteria, $beginDate, $endDate, $skip, $rows);
+            $result['counts'] = Keywords::getKeywordsCount($campaignId, $adGroupId, $criteria);
+        }catch (\Exception $e) {
+            return response()->json([$e->getMessage()], 500);
+        }
+        return response()->json(['data' => $result], 200);
     }
 
     /**

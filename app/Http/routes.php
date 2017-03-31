@@ -63,5 +63,19 @@ $app->group(['prefix' => 'api'], function () use ($app) {
     $app->get('searchtermoption', [
         'as' => 'searchtermoption', 'uses' => 'App\Http\Controllers\SearchtermController@getSearchtermOption'
     ]);
-
+    //route to create new positive keyword
+    $app->post('positivekeyword', [
+        'as' => 'positivekeyword', 'uses' => 'App\Http\Controllers\SearchtermController@createPositiveKeyword'
+    ]);
+    //route to create new negative keyword
+    $app->post('negativekeyword', [
+        'as' => 'negativekeyword', 'uses' => 'App\Http\Controllers\SearchtermController@createNegativeKeyword'
+    ]);
+    //route to get search term history
+    $app->get('searchtermhistory', [
+        'as' => 'searchtermoption', 'uses' => 'App\Http\Controllers\SearchtermController@getSearchtermHistory'
+    ]);
+    $app->get('campaignconnection', [
+        'as' => 'campaignconnection', 'uses' => 'App\Http\Controllers\CampaignsController@getCampaignConnection'
+    ]);
 });

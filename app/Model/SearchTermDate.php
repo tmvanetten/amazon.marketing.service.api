@@ -4,7 +4,7 @@ namespace App\Model;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CampaignConnection extends Model
+class SearchTermDate extends Model
 {
     /**
      * The attributes that are mass assignable.
@@ -12,8 +12,8 @@ class CampaignConnection extends Model
      * @var array
      */
     protected $fillable = [
-        'id', 'manual_id', 'auto_id', 'created_at', 'updated_at',
+        'id', 'beginDate', 'endDate', 'created_at', 'updated_at',
     ];
 
-    protected $table = 'campaign_connection';
+    protected $table = 'search_term_date';
 }
