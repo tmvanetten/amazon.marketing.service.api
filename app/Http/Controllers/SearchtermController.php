@@ -54,13 +54,13 @@ class SearchtermController extends Controller
             'sortOrder' => $sortOrder
         );
         $campaingName = $request->input('campaingName');
-        $campaingNames = explode(',', $campaingName);
         $adGroupName = $request->input('adGroupName');
         $keyWordName = $request->input('keyWordName');
         $matchType = $request->input('matchType');
         try{
             $model = new Searchterm;
-            if($campaingNames) {
+            if($campaingName) {
+                $campaingNames = explode(',', $campaingName);
                 $model = $model ->whereIn('campaign_name', $campaingNames);
             }
             if($adGroupName || $keyWordName) {
