@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Model\ProductAds;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\RequestReportAPI;
@@ -10,6 +11,8 @@ use App\ProductAdsReport;
 use App\KeywordsReport;
 use App\NegativeKeywordsReport;
 use App\CampaignReport;
+use App\Model\Campaigns;
+use App\Model\CampaignConnection;
 class CampaignsController extends Controller
 {
     /**
@@ -50,6 +53,124 @@ class CampaignsController extends Controller
                 'counts' => $counts
             ]
         ]);
+    }
+
+    /**
+ * Retrieve  two lists of campaigns for dropdowns.
+ * @return json response
+ */
+    public function listCampaigns() {
+        try {
+            $manualCampaigns = Campaigns::select('id as value','name as label')->where('targeting_type', 'manual')->whereNotIn('id', function ($query) {
+                $query->select(DB::raw('manual_id'))
+                    ->from('campaign_connection');
+            })->get();
+            $autoCampaigns = Campaigns::select('id as value','name as label')->where('targeting_type', 'auto')->whereNotIn('id', function ($query) {
+                $query->select(DB::raw('auto_id'))
+                    ->from('campaign_connection');
+            })->get();
+            $result = [
+                'autoCampaigns' => $autoCampaigns,
+                'manualCampaigns' => $manualCampaigns
+            ];
+        } catch  (\Exception $e) {
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
+        return response()->json(['data' => $result], 200);
+    }
+
+    /**
+     * Get connected campaigns.
+     * @return json response
+     */
+    public function getConnectedCampaigns(Request $request) {
+
+        $skip = $request->input('skip');
+        $rows = $request->input('rows');
+        $manual_name_filter = $request->input('manual_name_filter');
+        $auto_name_filter = $request->input('auto_name_filter');
+        $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
+        $criteria = array(
+            'filters' => array('a.name' => $manual_name_filter, 'b.name' => $auto_name_filter),
+            'sortField' => $request->input('sortField'),
+            'sortOrder' => $sortOrder
+        );
+
+        try {
+
+            $connectedCampaigns = CampaignConnection::getConnectedCampaigns($criteria, $skip, $rows);
+            $counts = CampaignConnection::getConnectedCampaigns($criteria);
+            $result = [
+                'connectedCampaigns' => $connectedCampaigns,
+                'counts' => count($counts)
+            ];
+        } catch  (\Exception $e) {
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
+        return response()->json(['data' => $result], 200);
+    }
+
+    /**
+     * Automatically connect campaigns.
+     * @return json response
+     */
+    public function automaticConnect() {
+
+        $manualIds = $this->_getNotConnectedCampaigns('manual');
+        $automaticIds = $this->_getNotConnectedCampaigns('auto');
+        $count = 0;
+        $result['manual'] = [];
+        $result['manual_id'] = $manualIds;//[];
+        $result['auto'] = [];
+        $result['auto_id'] = $automaticIds;//[];
+        foreach($manualIds as $idx => $manual_id){
+            $manualSKUs = $this->_getProductAdsASINsByCampaignId($manual_id)->toArray();
+            sort($manualSKUs);
+            if(empty($manualSKUs)){
+                unset($manualIds[$idx]);
+                continue;
+            }
+            foreach($automaticIds as $index => $auto_id){
+                $autoSKUs = $this->_getProductAdsASINsByCampaignId($auto_id)->toArray();
+                sort($autoSKUs);
+                if(empty($autoSKUs)){
+                    unset($autoSKUs[$index]);
+                    continue;
+                }
+                if($manualSKUs == $autoSKUs){
+                    try {
+                        //IMPORTANT uncomment to implement connection of campaigns automatically
+                        //CampaignConnection::create(['manual_id' => $manual_id, 'auto_id' => $auto_id]);
+                        $count++;
+                    } catch  (\Exception $e) {
+                        return response()->json(['errors' => [$e->getMessage()]], 422);
+                    }
+                }
+                $result['manual'][$manual_id] = $manualSKUs;
+                $result['auto'][$auto_id] = $autoSKUs;
+
+                $autoSKUs = null;
+            }
+            $manualSKUs = null;
+        }
+        return response()->json(['data' => array('message' => $count . ' connections has been created!', 'result' => $result)], 200);
+    }
+
+    /**
+     * Make a connection between two campaigns.
+     * @param $request Request
+     * @return json response
+     */
+    public function manuallyConnectCampaigns(Request $request) {
+        $manual_id = $request->input('selectedManualCampaign');
+        $auto_id = $request->input('selectedAutoCampaign');
+        try {
+            CampaignConnection::create(['manual_id' => $manual_id, 'auto_id' => $auto_id]);
+            $result = ['message' => 'Campaigns were successfully connected!'];
+        } catch  (\Exception $e) {
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
+        return response()->json(['data' => $result], 200);
     }
 
     /**
@@ -100,6 +221,23 @@ class CampaignsController extends Controller
             'status' => true,
             'data' => $campaign
         ]);
+    }
+
+    protected function _getNotConnectedCampaigns ($type){
+        $connectId = $type === 'manual' ? 'manual_id' : 'auto_id';
+        return Campaigns::where('targeting_type', $type)->whereNotIn('id', function ($query) use ($connectId) {
+            $query->select(DB::raw($connectId))
+                ->from('campaign_connection');
+        })->pluck('id');
+    }
+
+    /**
+     * Retrieve  all campaigns.
+     * @param $id Request
+     * @return array
+     */
+    protected function _getProductAdsASINsByCampaignId($id){
+        return ProductAds::where('campaign_id', $id)->pluck('asin');
     }
 
     /**
