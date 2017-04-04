@@ -17,7 +17,7 @@ $app->get('/', function () use ($app) {
 
 $app->group(['prefix' => 'api'], function () use ($app) {
     //route for Capmaigns
-	$app->get('campaigns', [
+	$app->post('campaigns', [
         'as' => 'campaigns', 'uses' => 'App\Http\Controllers\CampaignsController@index'
     ]);
     //route to get campaigns list

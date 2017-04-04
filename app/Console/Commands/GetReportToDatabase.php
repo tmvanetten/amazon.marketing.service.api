@@ -439,10 +439,10 @@ class GetReportToDatabase extends Command
         $requestedData['cost'] = !empty($dataFromReport['cost']) ? $dataFromReport['cost'] : '';
         $requestedData['clicks'] = !empty($dataFromReport['clicks']) ? $dataFromReport['clicks'] : '';
         $requestedData['impressions'] = !empty($dataFromReport['impressions']) ? $dataFromReport['impressions'] : '';
-        $requestedData['attributedConversions1dSameSKU'] = !empty($dataFromReport['attributedConversions1dSameSKU']) ? $dataFromReport['attributedConversions1dSameSKU'] : '';
-        $requestedData['attributedSales1d'] = !empty($dataFromReport['attributedSales1d']) ? $dataFromReport['attributedSales1d'] : '';
-        $requestedData['attributedConversions1d'] = !empty($dataFromReport['attributedConversions1d']) ? $dataFromReport['attributedConversions1d'] : '';
-        $requestedData['attributedSales1dSameSKU'] = !empty($dataFromReport['attributedSales1dSameSKU']) ? $dataFromReport['attributedSales1dSameSKU'] : '';
+        $requestedData['attributedConversions1dSameSKU'] = !empty($dataFromReport['attributedConversions30dSameSKU']) ? $dataFromReport['attributedConversions30dSameSKU'] : '';
+        $requestedData['attributedSales1d'] = !empty($dataFromReport['attributedSales30d']) ? $dataFromReport['attributedSales30d'] : '';
+        $requestedData['attributedConversions1d'] = !empty($dataFromReport['attributedConversions30d']) ? $dataFromReport['attributedConversions30d'] : '';
+        $requestedData['attributedSales1dSameSKU'] = !empty($dataFromReport['attributedSales30dSameSKU']) ? $dataFromReport['attributedSales30dSameSKU'] : '';
         return $requestedData;
     }
 

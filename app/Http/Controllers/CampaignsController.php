@@ -8,10 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\RequestReportAPI;
 use App\AdGroupsReport;
-use App\ProductAdsReport;
-use App\KeywordsReport;
 use App\NegativeKeywordsReport;
-use App\CampaignReport;
 use App\Model\Campaigns;
 use App\Model\CampaignConnection;
 use App\Model\Keywords;
@@ -42,15 +39,17 @@ class CampaignsController extends Controller
         $endDate = $request->input('endDate');
         $skip = $request->input('skip');
         $rows = $request->input('rows');
+        $filters = $request->input('filters');
         $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
         $criteria = array(
             'globalFilter' => $request->input('globalFilter'),
             'sortField' => $request->input('sortField'),
-            'sortOrder' => $sortOrder
+            'sortOrder' => $sortOrder,
+            'filters' => $filters
         );
 
         $result['campaigns'] = Campaigns::getCampaigns($criteria, $beginDate, $endDate, $skip, $rows);
-        $result['counts'] = Campaigns::getCampaignsCount($criteria, $beginDate, $endDate);
+        $result['counts'] = count(Campaigns::getCampaigns($criteria, $beginDate, $endDate));
 
         return response()->json([
             'data' => $result
@@ -142,7 +141,7 @@ class CampaignsController extends Controller
                 if($manualSKUs == $autoSKUs){
                     try {
                         //IMPORTANT uncomment to implement connection of campaigns automatically
-                        //CampaignConnection::create(['manual_id' => $manual_id, 'auto_id' => $auto_id]);
+                        CampaignConnection::create(['manual_id' => $manual_id, 'auto_id' => $auto_id]);
                         $count++;
                     } catch  (\Exception $e) {
                         return response()->json(['errors' => [$e->getMessage()]], 422);
@@ -366,7 +365,6 @@ class CampaignsController extends Controller
         }
 
         return response()->json([
-            'status' => true,
             'data' => [
                 'nkeywords' => $nkeyWords,
                 'counts' => $counts
@@ -387,30 +385,13 @@ class CampaignsController extends Controller
         $state = $enabled == 1 ? 'enabled' : 'disabled';
         switch($type){
             case 'campaign':
-                $model = new CampaignReport();
-                $modelId = 'campaignId';
-                break;
-            case 'adGroup':
-                $model = new AdGroupsReport();
-                $modelId = 'adGroupId';
-                break;
-            case 'productAd':
-                $model = new ProductAdsReport();
-                $modelId = 'adId';
-                break;
-            case 'keyword':
-                $model = new KeywordsReport();
-                $modelId = 'keywordId';
-                break;
-            case 'negativeKeyword':
-                $model = new NegativeKeywordsReport();
-                $modelId = 'keywordId';
+                $model = new Campaigns();
+                $modelId = 'id';
                 break;
         }
 
-        if ($model->where($modelId, $id)->update(['enabled' => $enabled])){
+        if ($model->where($modelId, $id)->update(['run_strategy' => $enabled])){
             return response()->json([
-                'status' => true,
                 'data' => [
                     'message' => 'Item has been ' . $state,
                     'severity' => 'success'
@@ -418,7 +399,6 @@ class CampaignsController extends Controller
             ]);
         }else{
             return response()->json([
-                'status' => true,
                 'data' => [
                     'message' => "Item status was not "  . $state,
                     'severity' => 'error'

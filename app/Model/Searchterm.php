@@ -15,7 +15,7 @@ class Searchterm extends Model
      * @var array
      */
     protected $fillable = [
-        'id', 'campaign_name', 'adgroup_name', 'customer_search_term', 'keyworod', 'match_type', 'impressions', 'clicks', 'ctr', 'spend', 'cpc', 'acos'
+        'id', 'campaign_name', 'adgroup_name', 'customer_search_term', 'keyworod', 'match_type', 'impressions', 'clicks', 'ctr', 'spend', 'cpc', 'acos', 'one_week_order', 'one_week_sales'
     ];
 
     protected $dataFields = [
@@ -51,6 +51,12 @@ class Searchterm extends Model
         ],
         'ACoS' => [
             'code' =>'acos'
+        ],
+        'Orders placed within 1-week of a click' => [
+            'code' =>'one_week_order'
+        ],
+        'Product Sales within 1-week of a click' => [
+            'code' =>'one_week_sales'
         ]
     ];
 

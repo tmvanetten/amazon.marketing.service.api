@@ -54,22 +54,6 @@ class AmazonAPI {
         return json_decode($responses['response'], true);
     }
 
-    /**
-     * @param $keyword string keyword text
-     * @param $campaignId bigInt campaign id
-     * @param $adgroupId bigInt ad group id
-     * @return AmazonAPI
-     */
-    public function doesPositiveKeyWordExist($keyword, $campaignId, $adgroupId, $matchType) {
-        $response = $this->_client->listBiddableKeywords([
-            "stateFilter" => "enabled",
-            "keywordText" => $keyword,
-            "campaignIdFilter" => $campaignId,
-            "adGroupIdFilter" => $adgroupId,
-            "matchTypeFilter" => $matchType
-        ]);
-    }
-
     private function requestException($methodName) {
         throw new AmazonAPIException("Cannot connect to Amazon API Method $methodName");
     }

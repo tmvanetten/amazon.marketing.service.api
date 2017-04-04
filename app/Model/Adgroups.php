@@ -57,7 +57,7 @@ class Adgroups extends Model
         $query = $query->where('adgroups.campaign_id', $campaignId);
 
         if(!empty($criteria['globalFilter']))
-            $query = $query->where('c.name', 'LIKE', '%' . $criteria['globalFilter'] . '%');
+            $query = $query->where('adgroups.name', 'LIKE', '%' . $criteria['globalFilter'] . '%');
 
         if($criteria['sortField'] && $criteria['sortOrder'])
             $query = $query->orderBy($criteria['sortField'], $criteria['sortOrder']);
@@ -73,7 +73,7 @@ class Adgroups extends Model
             count(*) as count'));
         $query = $query->where('adgroups.campaign_id', $campaignId);
         if(!empty($criteria['globalFilter']))
-            $query = $query->where('c.name', 'LIKE', '%' . $criteria['globalFilter'] . '%');
+            $query = $query->where('adgroups.name', 'LIKE', '%' . $criteria['globalFilter'] . '%');
 
         //$query = $query->groupBy('c.id');
         return $query->count();
