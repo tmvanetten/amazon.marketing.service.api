@@ -73,7 +73,7 @@ $app->group(['prefix' => 'api'], function () use ($app) {
         'as' => 'uploadsearchterm', 'uses' => 'App\Http\Controllers\SearchtermController@upload'
     ]);
     //route to get search term
-    $app->get('searchterm', [
+    $app->post('searchterm', [
         'as' => 'searchterm', 'uses' => 'App\Http\Controllers\SearchtermController@get'
     ]);
     $app->get('searchtermoption', [
