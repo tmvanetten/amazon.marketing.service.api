@@ -37,7 +37,7 @@ $app->group(['prefix' => 'api'], function () use ($app) {
         'as' => 'connectCampaignsAuto', 'uses' => 'App\Http\Controllers\CampaignsController@automaticConnect'
     ]);
     //route for Campaign
-    $app->get('campaign', [
+    $app->post('campaign', [
         'as' => 'campaign', 'uses' => 'App\Http\Controllers\CampaignsController@getCampaignById'
     ]);
     //route for Product Ads  // `/${id}/adGroup/${gid}/selectedDate/${selectedDate}`;

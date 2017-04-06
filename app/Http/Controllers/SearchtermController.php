@@ -61,7 +61,7 @@ class SearchtermController extends Controller
         try{
             $model = new Searchterm;
             if($campaingName) {
-                $campaingNames = explode(',', $campaingName);
+                $campaingNames = is_array($campaingName) ? $campaingName : [$campaingName]; //explode(',', $campaingName);
                 $model = $model ->whereIn('campaign_name', $campaingNames);
             }
             if($adGroupName || $keyWordName) {
