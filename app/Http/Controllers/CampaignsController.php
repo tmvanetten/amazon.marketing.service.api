@@ -237,6 +237,7 @@ class CampaignsController extends Controller
         $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
         $criteria = array(
             'globalFilter' => $request->input('globalFilter'),
+            'filters' => $request->input('filters'),
             'sortField' => $request->input('sortField'),
             'sortOrder' => $sortOrder
         );
@@ -247,7 +248,7 @@ class CampaignsController extends Controller
         ];
 
         $result['adgroups'] = Adgroups::getAdgroups($campaignId, $criteria, $beginDate, $endDate, $skip, $rows);
-        $result['counts'] = Adgroups::getAdgroupCount($campaignId, $criteria, $beginDate, $endDate);
+        $result['counts'] = count(Adgroups::getAdgroups($campaignId, $criteria, $beginDate, $endDate));
 
         return response()->json(['data' => $result]);
     }

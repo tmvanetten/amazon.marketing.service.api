@@ -50,6 +50,7 @@ class SearchtermController extends Controller
         $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
         $criteria = array(
             'globalFilter' => $request->input('globalFilter'),
+            'filters' => $request->input('filters'),
             'sortField' => $request->input('sortField'),
             'sortOrder' => $sortOrder
         );
@@ -60,7 +61,7 @@ class SearchtermController extends Controller
         try{
             $model = new Searchterm;
             if($campaingName) {
-                $campaingNames = explode(',', $campaingName);
+                $campaingNames = is_array($campaingName) ? $campaingName : [$campaingName]; //explode(',', $campaingName);
                 $model = $model ->whereIn('campaign_name', $campaingNames);
             }
             if($adGroupName || $keyWordName) {
@@ -75,7 +76,21 @@ class SearchtermController extends Controller
             }
             if($criteria['globalFilter'])
                 $model = $model->where('customer_search_term', 'LIKE', '%' . $criteria['globalFilter'] . '%');
-
+            if($criteria['filters'] && is_array($criteria['filters']) && count($criteria['filters'])) {
+                foreach($criteria['filters'] as $field => $filter) {
+                    switch($filter['matchMode']) {
+                        case 'like':
+                            $model = $model->where($field, 'LIKE', '%' . $filter['value'] . '%');
+                            break;
+                        case 'equals':
+                            $model = $model->where($field, '=', $filter['value']);
+                            break;
+                        case 'in':
+                            $model = $model->whereBetween($field, $filter['value']);
+                            break;
+                    }
+                }
+            }
             $result['count'] = $model->count();
             if($criteria['sortField'] && $criteria['sortOrder'])
                 $model = $model->orderBy($criteria['sortField'], $criteria['sortOrder']);
