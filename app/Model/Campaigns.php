@@ -99,61 +99,81 @@ class Campaigns extends Model
     }
 
 
-    public static function getBiddableAutoCampaign($recentBeginDate, $pastEndDate, $endDate) {
+    public static function getBiddableAutoCampaign($beginDate, $endDate, $runDate) {
         $query = DB::table('adgroups')->select(DB::raw('
             adgroups.id as adGroupId,
             campaigns.id as campaignId,
-            campaigns.name as campaignName,
-            adgroups.adgroupName,
             adgroups.default_bid as defaultBid,
-            sum(ad_group_report_recent.clicks) clicks_recent,
-            sum(ad_group_report_recent.cost) cost_recent,
-            sum(ad_group_report_recent.impressions) impressions_recent,
-            sum(ad_group_report_recent.attributedSales1d) sales_recent,
-            sum(ad_group_report_recent.attributedSales1d) attributedSales1d_recent,
-            sum(ad_group_report_recent.attributedConversions1d) attributedConversions1d_recent,
-            sum(ad_group_report_recent.cost)/sum(ad_group_report_recent.clicks) as cpc_recent,
-            sum(ad_group_report_recent.cost)/sum(ad_group_report_recent.attributedSales1d)*100 as acos_recent,
-            sum(ad_group_report_past.clicks) clicks_past,
-            sum(ad_group_report_past.cost) cost_past,
-            sum(ad_group_report_past.impressions) impressions_past,
-            sum(ad_group_report_past.attributedSales1d) sales_past,
-            sum(ad_group_report_past.attributedSales1d) attributedSales1d_past,
-            sum(ad_group_report_past.attributedConversions1d) attributedConversions1d_past,
-            sum(ad_group_report_past.cost)/sum(ad_group_report_past.clicks) as cpc_past,
-            sum(ad_group_report_past.cost)/sum(ad_group_report_past.attributedSales1d)*100 as acos_past,
-            max(strategy_history.created_at) as strategyDate'));
+            sum(ad_group_report.clicks) clicks,
+            sum(ad_group_report.cost) cost,
+            sum(ad_group_report.impressions) impressions,
+            sum(ad_group_report.attributedSales1d) sales,
+            sum(ad_group_report.attributedConversions1d) conversions,
+            sum(ad_group_report.cost)/sum(ad_group_report.clicks) as cpc,
+            sum(ad_group_report.cost)/sum(ad_group_report.attributedSales1d)*100 as acos,
+            (SELECT max(strategy_history.created_at) FROM strategy_history WHERE strategy_history.ad_group_id = adgroups.id) as strategyDate'));
         $query->RightJoin('campaigns', function ($join){
             $join->on( 'campaigns.id', '=', 'adgroups.campaign_id');
         });
-        $query->LeftJoin('strategy_history', function ($join){
-            $join->on( 'strategy_history.ad_group_id', '=', 'adgroups.id');
+        $query->LeftJoin('ad_group_report', function ($join) {
+            $join->on( 'adgroups.id', '=', 'ad_group_report.adGroupId');
         });
-        $query->LeftJoin('reqest_report_api as reqest_report_api_recent', function ($join) use ($recentBeginDate, $endDate){
-            $join->where('reqest_report_api_recent.type', '=', 'adGroups')
-                ->where('reqest_report_api_recent.amazn_report_date', '>=', $recentBeginDate)
-                ->where('reqest_report_api_recent.amazn_report_date', '<=', $endDate);
+        $query->LeftJoin('reqest_report_api', function ($join) {
+            $join->on('ad_group_report.request_report_id', '=', 'reqest_report_api.id');
         });
-        $query->LeftJoin('ad_group_report as ad_group_report_recent', function ($join) {
-            $join->on( 'adgroups.id', '=', 'ad_group_report_recent.adGroupId')
-                ->on('ad_group_report_recent.request_report_id', '=', 'reqest_report_api_recent.id');
-        });
-        $query->LeftJoin('reqest_report_api as reqest_report_api_past', function ($join) use ($pastEndDate, $endDate){
-            $join->where('reqest_report_api_past.type', '=', 'adGroups')
-                ->where('reqest_report_api_past.amazn_report_date', '>=', $pastEndDate)
-                ->where('reqest_report_api_past.amazn_report_date', '<=', $endDate);
-        });
-        $query->LeftJoin('ad_group_report as ad_group_report_past', function ($join) {
-            $join->on( 'adgroups.id', '=', 'ad_group_report_past.adGroupId')
-                ->on('ad_group_report_past.request_report_id', '=', 'reqest_report_api_past.id');
-        });
-
         $query = $query->where('campaigns.run_strategy', '=', true);
+        $query = $query->where('campaigns.targeting_type', '=', 'auto');
+        $query = $query->where('reqest_report_api.type', '=', 'adGroups');
+        $query = $query->where('reqest_report_api.amazn_report_date', '>=', $beginDate);
+        $query = $query->where('reqest_report_api.amazn_report_date', '<=', $endDate);
         $query = $query->groupBy('adgroups.id');
+        $query = $query->havingRaw("strategyDate IS NULL OR strategyDate < '$runDate'");
         $data = [];
         $collection = $query->get();
         foreach($collection as $item) {
             $data[$item->adGroupId] = $item;
+        }
+        return $data;
+    }
+
+    public static function getBiddableManualCampaign($beginDate, $endDate, $runDate) {
+        $query = DB::table('keywords')->select(DB::raw('
+            keywords.id as keywordId,
+            adgroups.id as adGroupId,
+            campaigns.id as campaignId,
+            keywords.bid as defaultBid,
+            sum(keywords_report.clicks) clicks,
+            sum(keywords_report.cost) cost,
+            sum(keywords_report.impressions) impressions,
+            sum(keywords_report.attributedSales1d) sales,
+            sum(keywords_report.attributedConversions1d) conversions,
+            sum(keywords_report.cost)/sum(keywords_report.clicks) as cpc,
+            sum(keywords_report.cost)/sum(keywords_report.attributedSales1d)*100 as acos,
+            (SELECT max(strategy_history.created_at) FROM strategy_history WHERE strategy_history.keyword_id = keywords.id) as strategyDate'));
+        $query->RightJoin('campaigns', function ($join){
+            $join->on( 'campaigns.id', '=', 'keywords.campaign_id');
+        });
+        $query->RightJoin('adgroups', function ($join){
+            $join->on( 'adgroups.id', '=', 'keywords.ad_group_id');
+        });
+        $query->LeftJoin('keywords_report', function ($join) {
+            $join->on( 'keywords.id', '=', 'keywords_report.keywordId');
+        });
+        $query->LeftJoin('reqest_report_api', function ($join) {
+            $join->on('keywords_report.request_report_id', '=', 'reqest_report_api.id');
+        });
+        $query = $query->where('keywords.bid', '>', 0);
+        $query = $query->where('campaigns.run_strategy', '=', true);
+        $query = $query->where('campaigns.targeting_type', '=', 'manual');
+        $query = $query->where('reqest_report_api.type', '=', 'keywords');
+        $query = $query->where('reqest_report_api.amazn_report_date', '>=', $beginDate);
+        $query = $query->where('reqest_report_api.amazn_report_date', '<=', $endDate);
+        $query = $query->groupBy('keywords.id');
+        $query = $query->havingRaw("strategyDate IS NULL OR strategyDate < '$runDate'");
+        $data = [];
+        $collection = $query->get();
+        foreach($collection as $item) {
+            $data[$item->keywordId] = $item;
         }
         return $data;
     }

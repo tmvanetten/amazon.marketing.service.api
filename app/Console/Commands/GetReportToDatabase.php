@@ -113,11 +113,9 @@ class GetReportToDatabase extends Command
                         } else if ($item->type == 'adGroups') {
                             if(isset($dataItem['adGroupId'])) {
                                 $requestAdGroupData = $client->getAdGroup($dataItem['adGroupId']);
-                                //var_dump($requestAdGroupData);
                                 if ($requestAdGroupData['success']) {
                                     $adGroupData = json_decode($requestAdGroupData['response']);
                                     $adGroupData = (array)$adGroupData;
-                                    //var_dump($requestAdGroupData);
                                     $result = $this->prepareData($adGroupData, $dataItem);
                                     $adGroup = AdGroupsReport::where('campaignId', $result['campaignId'])
                                         ->where('adGroupId', $result['adGroupId'])
@@ -126,6 +124,8 @@ class GetReportToDatabase extends Command
                                     if(is_null($adGroup)){
                                         $adGroup = AdGroupsReport::create($result);
                                     }else{
+                                        if(isset($result['defaultBid']))
+                                            unset($result['defaultBid']);
                                         $adGroup = $this->_updateModel($adGroup, $result);
                                     }
                                     $adGroup->request_report_id = $item->id;
@@ -143,7 +143,6 @@ class GetReportToDatabase extends Command
                         } else if ($item->type == 'keywords') {
                             if(isset($dataItem['keywordId'])) {
                                 $requestKeywordData = $client->getBiddableKeyword($dataItem['keywordId']);
-                                //var_dump($requestKeywordData);
                                 if ($requestKeywordData['success']) {
                                     $keywordData = json_decode($requestKeywordData['response']);
                                     $keywordData = (array)$keywordData;
@@ -156,6 +155,8 @@ class GetReportToDatabase extends Command
                                     if(is_null($keyword)){
                                         $keyword = KeywordsReport::create($result);
                                     }else{
+                                        if(isset($result['bid']))
+                                            unset($result['bid']);
                                         $keyword = $this->_updateModel($keyword, $result);
                                     }
                                     $keyword->request_report_id = $item->id;

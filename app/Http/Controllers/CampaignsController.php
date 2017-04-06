@@ -8,10 +8,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\RequestReportAPI;
 use App\AdGroupsReport;
+use App\KeywordsReport;
 use App\NegativeKeywordsReport;
 use App\Model\Campaigns;
 use App\Model\CampaignConnection;
 use App\Model\Keywords;
+use App\Model\StrategyHistory;
 
 class CampaignsController extends Controller
 {
@@ -54,6 +56,53 @@ class CampaignsController extends Controller
         return response()->json([
             'data' => $result
         ]);
+    }
+
+    public function getKeywordHistory(Request $request) {
+        $keywordId = $request->input('keywordId');
+        $result = [
+            'lineChartData' => [
+                'bid' => [],
+                'clicks' => [],
+                'cost' => [],
+                'sales' => []
+            ],
+            'lineChartLabels' => [],
+            'histories' => []
+        ];
+        try {
+            $keyword = Keywords::find($keywordId);
+            if(!$keyword)
+                return response()->json(['Keyword not found!'], 400);
+            $endDate  = date("Y-m-d");
+            $beginDate = date("Y-m-d", strtotime('-15 days'));
+            $histories = StrategyHistory::where('keyword_id', $keyword->id)
+                ->where('created_at', '>=', $beginDate)
+                ->where('created_at', '<=', $endDate)
+                ->get(['created_at', 'updated_by']);
+            $processedHistories = [];
+            foreach($histories as $history) {
+                $processedHistories[ date("Y-m-d", strtotime($history->created_at))] = $history->updated_by;
+            }
+            $keywords = Keywords::getKeyWordsHistory($keyword->id, $beginDate, $endDate);
+            foreach($keywords as $keyword) {
+                $result['lineChartData']['bid'][] = $keyword->bid;
+                $result['lineChartData']['clicks'][] = $keyword->clicks;
+                $result['lineChartData']['cost'][] = $keyword->cost;
+                $result['lineChartData']['sales'][] = $keyword->sales;
+                $result['lineChartLabels'][] = $keyword->amazn_report_date;
+            }
+            foreach ($result['lineChartLabels'] as $date) {
+                if(isset($processedHistories[$date])) {
+                    $result['histories'][] = $processedHistories[$date];
+                } else {
+                    $result['histories'][] = false;
+                }
+            }
+        } catch  (\Exception $e) {
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
+        return response()->json(['data' => $result], 200);
     }
 
     /**

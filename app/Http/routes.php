@@ -68,6 +68,10 @@ $app->group(['prefix' => 'api'], function () use ($app) {
     $app->post('strategy', [
         'as' => 'strategy', 'uses' => 'App\Http\Controllers\StrategyController@saveStrategy'
     ]);
+    //route to get dates array
+    $app->post('strategyhistory', [
+        'as' => 'strategyhistory', 'uses' => 'App\Http\Controllers\StrategyController@getStrategyHistory'
+    ]);
     //route to upload search term
     $app->post('uploadsearchterm', [
         'as' => 'uploadsearchterm', 'uses' => 'App\Http\Controllers\SearchtermController@upload'
@@ -93,5 +97,8 @@ $app->group(['prefix' => 'api'], function () use ($app) {
     ]);
     $app->get('campaignconnection', [
         'as' => 'campaignconnection', 'uses' => 'App\Http\Controllers\CampaignsController@getCampaignConnection'
+    ]);
+    $app->get('keywordhistory', [
+        'as' => 'keywordhistory', 'uses' => 'App\Http\Controllers\CampaignsController@getKeywordHistory'
     ]);
 });

@@ -15,7 +15,8 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         'App\Console\Commands\AmazonDownload',
         'App\Console\Commands\RequestApiReports',
-        'App\Console\Commands\GetReportToDatabase'
+        'App\Console\Commands\GetReportToDatabase',
+        'App\Console\Commands\runStrategy'
         //
     ];
 

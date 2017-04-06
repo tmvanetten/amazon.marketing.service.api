@@ -54,6 +54,32 @@ class AmazonAPI {
         return json_decode($responses['response'], true);
     }
 
+    public function bidOnAdgroup($adgroupId, $bid) {
+        $adgroupId = (int) $adgroupId;
+        $responses = $this->_client->updateAdGroups([
+            [
+                "adGroupId" => $adgroupId,
+                "defaultBid" => $bid
+            ]
+        ]);
+        if(!$responses['success'])
+            $this->requestException(__FUNCTION__);
+        return json_decode($responses['response'], true);
+    }
+
+    public function bidOnKeyword($keywordId, $bid) {
+        $keywordId = (int) $keywordId;
+        $responses = $this->_client->updateBiddableKeywords([
+            [
+                "keywordId" => $keywordId,
+                "bid" => $bid
+            ]
+        ]);
+        if(!$responses['success'])
+            $this->requestException(__FUNCTION__);
+        return json_decode($responses['response'], true);
+    }
+
     private function requestException($methodName) {
         throw new AmazonAPIException("Cannot connect to Amazon API Method $methodName");
     }
