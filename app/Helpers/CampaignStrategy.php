@@ -115,6 +115,9 @@ class CampaignStrategy {
             case 'equal_less':
                 $result = $InputEntityOne <= $compareValue;
                 break;
+            case 'not_equal':
+                $result = $InputEntityOne != $compareValue;
+                break;
             default:
                 $result = false;
                 break;

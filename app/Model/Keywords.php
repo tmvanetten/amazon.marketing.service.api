@@ -117,7 +117,6 @@ class Keywords extends Model
                 ->on('keywords_report.request_report_id', '=', 'reqest_report_api.id');
         });
         $query = $query->where('keywords.id', '=', $keywordId);
-        $query = $query->where('reqest_report_api.type', '=', 'keywords');
         $query = $query->orderBy('amazn_report_date', 'asc');
         return $query->get();
     }

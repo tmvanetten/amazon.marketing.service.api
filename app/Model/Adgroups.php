@@ -41,7 +41,11 @@ class Adgroups extends Model
             sum(ad_group_report.attributedSales1d) attributedSales1d,
             sum(ad_group_report.attributedConversions1d) attributedConversions1d,
             sum(ad_group_report.cost)/sum(ad_group_report.clicks) as cpc,
-            sum(ad_group_report.cost)/sum(ad_group_report.attributedSales1d)*100 as acos'));
+            sum(ad_group_report.cost)/sum(ad_group_report.attributedSales1d)*100 as acos,
+            history.created_at as strategyDate,
+            history.new_bid,
+            history.old_bid,
+            history.updated_by'));
 
         $query->LeftJoin('reqest_report_api', function ($join) use ($beginData, &$endDate){
             $join->where('reqest_report_api.type', '=', 'adGroups')
@@ -52,6 +56,33 @@ class Adgroups extends Model
             $join->on( 'adgroups.id', '=', 'ad_group_report.adGroupId')
                 ->on('ad_group_report.request_report_id', '=', 'reqest_report_api.id');
         });
+
+        $query->leftJoin(
+            DB::raw("(
+            SELECT
+                history_sort.ad_group_id,
+                history_sort.created_at,
+                history_sort.new_bid,
+                history_sort.old_bid,
+                history_sort.updated_by
+            FROM (
+                SELECT
+                    ad_group_id,
+                    created_at,
+                    new_bid,
+                    old_bid,
+                    updated_by
+              FROM strategy_history h1
+              WHERE h1.created_at = (
+                SELECT MAX(h2.created_at)
+                from strategy_history h2
+                LEFT JOIN campaigns ON h2.campaign_id = campaigns.id
+                where h1.ad_group_id = h2.ad_group_id
+                AND campaigns.targeting_type = 'auto'
+              )
+            ) history_sort) `history`
+        "), 'history.ad_group_id', '=', 'adgroups.id'
+        );
 
         $query = $query->groupBy('adgroups.id');
         $query = $query->where('adgroups.campaign_id', $campaignId);
@@ -78,6 +109,28 @@ class Adgroups extends Model
         if(!is_null($skip) || !is_null($rows)) return $query->offset($skip)->limit($rows)->get();
         //$results = $query->toSql();
         //var_dump($results);
+        return $query->get();
+    }
+
+    public static function getAdGroupsHistory($adgroupId, $beginDate, $endDate) {
+        $query = SELF::query();
+        $query = $query->select(DB::raw('
+            ad_group_report.defaultBid as bid,
+            ad_group_report.clicks,
+            ad_group_report.cost,
+            ad_group_report.attributedSales1d as sales,
+            reqest_report_api.amazn_report_date'));
+        $query->LeftJoin('reqest_report_api', function ($join) use ($beginDate, &$endDate){
+            $join->where('reqest_report_api.type', '=', 'adGroups')
+                ->where('reqest_report_api.amazn_report_date', '>=', $beginDate)
+                ->where('reqest_report_api.amazn_report_date', '<=', $endDate);
+        });
+        $query->LeftJoin('ad_group_report', function ($join){
+            $join->on( 'adgroups.id', '=', 'ad_group_report.adGroupId')
+                ->on('ad_group_report.request_report_id', '=', 'reqest_report_api.id');
+        });
+        $query = $query->where('adgroups.id', '=', $adgroupId);
+        $query = $query->orderBy('amazn_report_date', 'asc');
         return $query->get();
     }
 
