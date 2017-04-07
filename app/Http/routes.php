@@ -101,4 +101,8 @@ $app->group(['prefix' => 'api'], function () use ($app) {
     $app->get('keywordhistory', [
         'as' => 'keywordhistory', 'uses' => 'App\Http\Controllers\CampaignsController@getKeywordHistory'
     ]);
+    $app->get('adgrouphistory', [
+        'as' => 'adgrouphistory', 'uses' => 'App\Http\Controllers\CampaignsController@getAdGroupHistory'
+    ]);
+
 });

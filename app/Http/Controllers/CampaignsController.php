@@ -58,6 +58,59 @@ class CampaignsController extends Controller
         ]);
     }
 
+    public function getAdGroupHistory(Request $request) {
+        $adgroupId = $request->input('adgroupId');
+        $result = [
+            'lineChartData' => [
+                'bid' => [],
+                'clicks' => [],
+                'cost' => [],
+                'sales' => []
+            ],
+            'lineChartLabels' => [],
+            'histories' => []
+        ];
+        try {
+            $adgroup = Adgroups::find($adgroupId);
+            if(!$adgroup)
+                return response()->json(['Adgroup not found!'], 400);
+            $endDate  = date("Y-m-d");
+            $beginDate = date("Y-m-d", strtotime('-15 days'));
+            $histories = StrategyHistory::query();
+            $histories->LeftJoin('campaigns', function ($join){
+                $join->on( 'campaigns.id', '=', 'strategy_history.campaign_id');
+            });
+            $histories = $histories->where('campaigns.targeting_type', 'auto')
+                ->where('strategy_history.ad_group_id', $adgroup->id)
+                ->where('strategy_history.created_at', '>=', $beginDate)
+                ->where('strategy_history.created_at', '<=', $endDate)
+                ->get(['strategy_history.created_at', 'strategy_history.updated_by']);
+            $processedHistories = [];
+            foreach($histories as $history) {
+                $processedHistories[ date("Y-m-d", strtotime($history->created_at))] = $history->updated_by;
+            }
+            $keywords = Adgroups::getAdGroupsHistory($adgroup->id, $beginDate, $endDate);
+            foreach($keywords as $keyword) {
+                $result['lineChartData']['bid'][] = $keyword->bid;
+                $result['lineChartData']['clicks'][] = $keyword->clicks;
+                $result['lineChartData']['cost'][] = $keyword->cost;
+                $result['lineChartData']['sales'][] = $keyword->sales;
+                $result['lineChartLabels'][] = $keyword->amazn_report_date;
+            }
+            foreach ($result['lineChartLabels'] as $date) {
+                if(isset($processedHistories[$date])) {
+                    $result['histories'][] = $processedHistories[$date];
+                } else {
+                    $result['histories'][] = false;
+                }
+            }
+        } catch  (\Exception $e) {
+            var_dump($e);
+            return response()->json(['errors' => [$e->getMessage()]], 422);
+        }
+        return response()->json(['data' => $result], 200);
+    }
+
     public function getKeywordHistory(Request $request) {
         $keywordId = $request->input('keywordId');
         $result = [

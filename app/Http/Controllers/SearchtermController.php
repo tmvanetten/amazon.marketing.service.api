@@ -60,6 +60,9 @@ class SearchtermController extends Controller
         $matchType = $request->input('matchType');
         try{
             $model = new Searchterm;
+            $model = $model->LeftJoin('campaigns', function ($join){
+                $join->on( 'campaigns.name', '=', 'search_terms_report.campaign_name');
+            });
             if($campaingName) {
                 $campaingNames = is_array($campaingName) ? $campaingName : [$campaingName]; //explode(',', $campaingName);
                 $model = $model ->whereIn('campaign_name', $campaingNames);
@@ -94,8 +97,8 @@ class SearchtermController extends Controller
             $result['count'] = $model->count();
             if($criteria['sortField'] && $criteria['sortOrder'])
                 $model = $model->orderBy($criteria['sortField'], $criteria['sortOrder']);
-
-            $model->select('*');
+            $model->select('search_terms_report.*');
+            $model->addSelect('campaigns.targeting_type');
             $model->addSelect(DB::raw('(select count(*) from search_term_history WHERE search_terms_report.customer_search_term = search_term_history.search_term) as history_count'));
             $result['searchterms'] = $model->offset($skip)->limit($rows)->get();
             $dateModel = $this->getDateModel();
