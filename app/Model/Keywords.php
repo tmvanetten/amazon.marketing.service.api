@@ -89,6 +89,20 @@ class Keywords extends Model
 
         if(!empty($criteria['globalFilter']))
             $query = $query->where('keywords.keyword_text', 'LIKE', '%' . $criteria['globalFilter'] . '%');
+        if($criteria['filters'] && is_array($criteria['filters']) && count($criteria['filters'])) {
+            foreach($criteria['filters'] as $field => $filter) {
+                switch($filter['matchMode']) {
+                    case 'like':
+                        $query = $query->having($field, 'LIKE', '%' . $filter['value'] . '%');
+                        break;
+                    case 'equals':
+                        $query = $query->having($field, '=', $filter['value']);
+                        break;
+                    case 'in':
+                        $query = $query->havingRaw($field . ' >= ' . $filter['value'][0] . ' AND ' . $field . ' <= ' . $filter['value'][1]);
+                }
+            }
+        }
 
         if($criteria['sortField'] && $criteria['sortOrder'])
             $query = $query->orderBy($criteria['sortField'], $criteria['sortOrder']);

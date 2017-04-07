@@ -41,15 +41,15 @@ $app->group(['prefix' => 'api'], function () use ($app) {
         'as' => 'campaign', 'uses' => 'App\Http\Controllers\CampaignsController@getCampaignById'
     ]);
     //route for Product Ads  // `/${id}/adGroup/${gid}/selectedDate/${selectedDate}`;
-    $app->get('productAds', [
+    $app->post('productAds', [
         'as' => 'productAds', 'uses' => 'App\Http\Controllers\CampaignsController@getProductAds'
     ]);
     //route for Keywords  // `/${id}/adGroup/${gid}/selectedDate/${selectedDate}`;
-    $app->get('keyWords', [
+    $app->post('keyWords', [
         'as' => 'keyWords', 'uses' => 'App\Http\Controllers\CampaignsController@getKeywords'
     ]);
     //route for Negative Keywords  // `/${id}/adGroup/${gid}/selectedDate/${selectedDate}`;
-    $app->get('negativeKeyWords', [
+    $app->post('negativeKeyWords', [
         'as' => 'negativeKeyWords', 'uses' => 'App\Http\Controllers\CampaignsController@getNegativeKeywords'
     ]);
     //route for switch function;
@@ -92,7 +92,7 @@ $app->group(['prefix' => 'api'], function () use ($app) {
         'as' => 'negativekeyword', 'uses' => 'App\Http\Controllers\SearchtermController@createNegativeKeyword'
     ]);
     //route to get search term history
-    $app->get('searchtermhistory', [
+    $app->post('searchtermhistory', [
         'as' => 'searchtermoption', 'uses' => 'App\Http\Controllers\SearchtermController@getSearchtermHistory'
     ]);
     $app->get('campaignconnection', [
