@@ -138,7 +138,7 @@ class RequestApiReportsHelper
         $request = $client->requestReport($reportType, array(
             'campaignType' => 'sponsoredProducts',
             'reportDate' => $this->_past_day,
-            'metrics' => 'impressions,clicks,cost,attributedConversions1dSameSKU,attributedConversions1d,attributedSales1dSameSKU,attributedSales1d'));
+            'metrics' => 'impressions,clicks,cost,attributedConversions30dSameSKU,attributedConversions30d,attributedSales30dSameSKU,attributedSales30d'));
         $data = $request['response'];
         $report = json_decode($data);
         if (!empty($report->reportId)) {

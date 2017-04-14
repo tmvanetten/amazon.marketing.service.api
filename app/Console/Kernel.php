@@ -31,7 +31,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('amazon:request_report')
             ->dailyAt('01:00')->appendOutputTo(storage_path('requestLog.txt'));
         $schedule->command('amazon:get_report_to_database')
-            ->dailyAt('01:20')->appendOutputTo(storage_path('saveReportToDBLog.txt'));
+            ->dailyAt('02:00')->appendOutputTo(storage_path('saveReportToDBLog.txt'));
         $schedule->command('strategy:run')
             ->dailyAt('03:20')->appendOutputTo(storage_path('runStrategy.txt'));;
     }
