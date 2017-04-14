@@ -350,6 +350,7 @@ class SearchtermController extends Controller
         $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
         $criteria = array(
             'globalFilter' => $request->input('globalFilter'),
+            'filters' => $request->input('filters'),
             'sortField' => $request->input('sortField'),
             'sortOrder' => $sortOrder
         );
@@ -357,7 +358,7 @@ class SearchtermController extends Controller
         try{
             $model = new SearchTermHistory;
             if($campaignId) {
-                $campaignId = explode(',', $campaignId);
+                $campaignId = is_array($campaignId) ? $campaignId : [$campaignId]; //explode(',', $campaignId);
                 $model = $model ->whereIn('campaign_id', $campaignId);
             }
             if($searchTerm || $adgroupId) {
@@ -370,6 +371,17 @@ class SearchtermController extends Controller
             }
             if($criteria['globalFilter'])
                 $model = $model->where('search_term', 'LIKE', '%' . $criteria['globalFilter'] . '%');
+            if($criteria['filters'] && is_array($criteria['filters']) && count($criteria['filters'])) {
+                foreach($criteria['filters'] as $field => $filter) {
+                    switch($filter['matchMode']) {
+                        case 'like':
+                            $model = $model->where($field, 'LIKE', '%' . $filter['value'] . '%');
+                            break;
+                        case 'equals':
+                            $model = $model->where($field, '=', $filter['value']);
+                    }
+                }
+            }
             $result['count'] = $model->count();
             if($criteria['sortField'] && $criteria['sortOrder'])
                 $model = $model->orderBy($criteria['sortField'], $criteria['sortOrder']);

@@ -370,6 +370,7 @@ class CampaignsController extends Controller
         $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
         $criteria = array(
             'globalFilter' => $request->input('globalFilter'),
+            'filters' => $request->input('filters'),
             'sortField' => $request->input('sortField'),
             'sortOrder' => $sortOrder
         );
@@ -390,7 +391,7 @@ class CampaignsController extends Controller
                     'name' => $adgroup->name,
                     'productAds' => ProductAds::getProductAds($campaignId, $adGroupId, $criteria, $beginDate, $endDate, $skip, $rows)
                 ],
-                'counts' => ProductAds::getProductAdsCount($campaignId, $adGroupId, $criteria)
+                'counts' => count(ProductAds::getProductAds($campaignId, $adGroupId, $criteria, $beginDate, $endDate))
             ];
 
         }catch (\Exception $e) {
@@ -418,6 +419,7 @@ class CampaignsController extends Controller
         $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
         $criteria = array(
             'globalFilter' => $request->input('globalFilter'),
+            'filters' => $request->input('filters'),
             'sortField' => $request->input('sortField'),
             'sortOrder' => $sortOrder
         );
@@ -445,6 +447,7 @@ class CampaignsController extends Controller
         $sortOrder = (int) $request->input('sortOrder') > 0 ? 'asc' : 'desc';
         $criteria = array(
             'globalFilter' => $request->input('globalFilter'),
+            'filters' => $request->input('filters'),
             'sortField' => $request->input('sortField'),
             'sortOrder' => $sortOrder
         );
@@ -456,6 +459,20 @@ class CampaignsController extends Controller
         $query = NegativeKeywordsReport::where('ad_group_id', $adgroup->id);//where('campaignId', $campaignId)->
 
         if(!empty($criteria['globalFilter'])) $query = $query->where('keywordText', 'LIKE', '%' . $criteria['globalFilter'] . '%');
+        if($criteria['filters'] && is_array($criteria['filters']) && count($criteria['filters'])) {
+            foreach($criteria['filters'] as $field => $filter) {
+                switch($filter['matchMode']) {
+                    case 'like':
+                        $query = $query->where($field, 'LIKE', '%' . $filter['value'] . '%');
+                        break;
+                    case 'equals':
+                        $query = $query->where($field, '=', $filter['value']);
+                        break;
+                    case 'in':
+                        $query = $query->whereBetween($field, $filter['value']);
+                }
+            }
+        }
 
         if($criteria['sortField'] && $criteria['sortOrder'])
             $query = $query->orderBy($criteria['sortField'], $criteria['sortOrder']);

@@ -43,6 +43,9 @@ class StrategyHistory extends Model
                         break;
                     case 'equals':
                         $query = $query->having($field, '=', $filter['value']);
+                        break;
+                    case 'in':
+                        $query = $query->havingRaw($field . ' >= ' . $filter['value'][0] . ' AND ' . $field . ' <= ' . $filter['value'][1]);
                 }
             }
         }
