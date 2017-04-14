@@ -74,8 +74,9 @@ class GetReportToDatabase extends Command
         $this->client = $client;
         $this->_downloadInfo();
         $totalCompleted = 0;
-        foreach($dates as $date){
-            $items = RequestReportAPI::where('amazn_report_date', $date)
+        $day = 1;
+        while($this->_getPastDayDate($day) >= $this->_getPastDayDate(7)){
+            $items = RequestReportAPI::where('amazn_report_date', $this->_getPastDayDate($day))
                 ->where('amazn_status', 'IN_PROGRESS')
                 ->get();
             foreach ($items as $item) {
@@ -93,7 +94,6 @@ class GetReportToDatabase extends Command
                             if(isset($dataItem['campaignId'])){
                                 $requestCampaignData = $client->getCampaign($dataItem['campaignId']);
                                 if($requestCampaignData['success']) {
-                                    //var_dump($requestCampaignData);
                                     $campaignData = json_decode($requestCampaignData['response']);
                                     $campaignData = (array) $campaignData;
                                     $result = $this->prepareData($campaignData, $dataItem);
@@ -221,11 +221,22 @@ class GetReportToDatabase extends Command
                     }
                 }
             }
+            $day++;
         }
 
         if ($totalCompleted) {
             $this->info($totalCompleted . ' report item generated & save to database Date:' . date("Ymd h:i:s A"));
         }
+    }
+
+    /**
+     * Get past day date.
+     * @param $pastDay integer
+     * @return string
+     */
+    protected function _getPastDayDate($pastDay)
+    {
+        return date("Ymd", time() - 60 * 60 * ($pastDay * 24));
     }
 
     protected function _downloadInfo() {
