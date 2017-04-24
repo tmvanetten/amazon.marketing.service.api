@@ -153,6 +153,9 @@ class SearchtermController extends Controller
             $campaignName = $campaign->name;
             $adgroupName = $adgroup->name;
             if($responses[0]['code'] != 'DUPLICATE') {
+
+                $keywordId = $responses[0]['keywordId'];
+                $amazonAPI->getAndCreateBiddableKeyword($keywordId);
                 $message = "Successfully created added keyword $searchTerm to $campaignName > $adgroupName, match type: $matchType";
                 //create history entry for the action
                 SearchTermHistory::create([
@@ -278,17 +281,17 @@ class SearchtermController extends Controller
             $defaultCampaign = Campaigns::where([
                 'name' => $campaingName,
             ])->first();
-            //if campaign is auto and related get its manual counter part
-            if($defaultCampaign->targeting_type == 'auto') {
-                $campaignConnectionModel = CampaignConnection::where('auto_id', $defaultCampaign->id)->first();
-                if($campaignConnectionModel) {
-                    $campaignModel = Campaigns::find($campaignConnectionModel->manual_id);
-                    if($campaignModel)
-                        $defaultCampaign = $campaignModel;
-                }
-            }
-            //get default ad group if there is default campaign
             if($defaultCampaign) {
+                //if campaign is auto and related get its manual counter part
+                if($defaultCampaign->targeting_type == 'auto') {
+                    $campaignConnectionModel = CampaignConnection::where('auto_id', $defaultCampaign->id)->first();
+                    if($campaignConnectionModel) {
+                        $campaignModel = Campaigns::find($campaignConnectionModel->manual_id);
+                        if($campaignModel)
+                            $defaultCampaign = $campaignModel;
+                    }
+                }
+                //get default ad group if there is default campaign
                 $result['default_campaign'] = $defaultCampaign->id;
                 $defaultAdgroup = Adgroups::where([
                     'campaign_id' => $defaultCampaign->id,
@@ -433,36 +436,65 @@ class SearchtermController extends Controller
         $a_data = [];
         // read incoming data
         $input = file_get_contents('php://input');
+        $fileName = $_FILES['upload']['name'];
+        if($input) {
+            // grab multipart boundary from content type header
+            preg_match('/boundary=(.*)$/', $_SERVER['CONTENT_TYPE'], $matches);
+            $boundary = $matches[1];
 
-        // grab multipart boundary from content type header
-        preg_match('/boundary=(.*)$/', $_SERVER['CONTENT_TYPE'], $matches);
-        $boundary = $matches[1];
+            // split content by boundary and get rid of last -- element
+            $a_blocks = preg_split("/-+$boundary/", $input);
+            array_pop($a_blocks);
 
-        // split content by boundary and get rid of last -- element
-        $a_blocks = preg_split("/-+$boundary/", $input);
-        array_pop($a_blocks);
-
-        // loop data blocks
-        foreach ($a_blocks as $id => $block)
-        {
-            if (empty($block))
-                continue;
-
-            // you'll have to var_dump $block to understand this and maybe replace \n or \r with a visibile char
-
-            // parse uploaded files
-            if (strpos($block, 'application/octet-stream') !== FALSE)
+            // loop data blocks
+            foreach ($a_blocks as $id => $block)
             {
-                // match "name", then everything after "stream" (optional) except for prepending newlines
-                preg_match("/name=\"([^\"]*)\".*stream[\n|\r]+([^\n\r].*)?$/s", $block, $matches);
+                if (empty($block))
+                    continue;
+
+                // you'll have to var_dump $block to understand this and maybe replace \n or \r with a visibile char
+
+                // parse uploaded files
+                if (strpos($block, 'application/octet-stream') !== FALSE)
+                {
+                    // match "name", then everything after "stream" (optional) except for prepending newlines
+                    preg_match("/name=\"([^\"]*)\".*stream[\n|\r]+([^\n\r].*)?$/s", $block, $matches);
+                }
+                // parse all other fields
+                else
+                {
+                    // match "name" and optional value in between newline sequences
+                    preg_match('/name=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $block, $matches);
+                }
+                $a_data[$matches[1]] = $matches[2];
             }
-            // parse all other fields
-            else
-            {
-                // match "name" and optional value in between newline sequences
-                preg_match('/name=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $block, $matches);
+            foreach($a_data as $name => $file) {
+                $data = [];
+                $lines = explode(PHP_EOL, $file);
+                if(trim($lines[0]) != self::ACCEPTED_FORMAT) {
+                    throw new \Exception('Incorrect file type, only Amazon report text file type is allowed!');
+                }
+                //unset file type line
+                unset($lines[0]);
+                //unset empty second line
+                unset($lines[1]);
+
+                foreach ($lines as $line) {
+                    $data[] = explode("\t", $line);
+                }
+                $a_data[$name] = $data;
             }
-            $a_data[$matches[1]] = $matches[2];
+
+        } else if($fileName) {
+            $a_data[$fileName] = file_get_contents($_FILES["upload"]["tmp_name"]);
+            foreach($a_data as $name => $file) {
+                $data = [];
+                $lines = explode(PHP_EOL, $file);
+                foreach ($lines as $line) {
+                    $data[] = explode("\t", $line);
+                }
+                $a_data[$name] = $data;
+            }
         }
         return $a_data;
     }

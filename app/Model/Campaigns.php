@@ -144,7 +144,7 @@ class Campaigns extends Model
             keywords.id as keywordId,
             adgroups.id as adGroupId,
             campaigns.id as campaignId,
-            keywords.bid as defaultBid,
+            CASE WHEN keywords.bid = 0 THEN adgroups.default_bid ELSE keywords.bid END as defaultBid,
             sum(keywords_report.clicks) clicks,
             sum(keywords_report.cost) cost,
             sum(keywords_report.impressions) impressions,
@@ -165,7 +165,7 @@ class Campaigns extends Model
         $query->LeftJoin('reqest_report_api', function ($join) {
             $join->on('keywords_report.request_report_id', '=', 'reqest_report_api.id');
         });
-        $query = $query->where('keywords.bid', '>', 0);
+       // $query = $query->where('keywords.bid', '>', 0);
         $query = $query->where('campaigns.run_strategy', '=', true);
         $query = $query->where('campaigns.targeting_type', '=', 'manual');
         $query = $query->where('reqest_report_api.type', '=', 'keywords');

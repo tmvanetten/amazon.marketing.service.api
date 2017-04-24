@@ -36,7 +36,7 @@ class Keywords extends Model
             keywords.keyword_text as keywordText,
             keywords.match_type as matchType,
             keywords.state,
-            keywords.bid,
+            CASE WHEN keywords.bid = 0 THEN adgroups.default_bid ELSE keywords.bid END as bid,
             sum(keywords_report.clicks) clicks,
             sum(keywords_report.cost) cost,
             sum(keywords_report.impressions) impressions,
@@ -59,6 +59,9 @@ class Keywords extends Model
         $query->LeftJoin('keywords_report', function ($join) use ($beginData, &$endDate){
             $join->on( 'keywords.id', '=', 'keywords_report.keywordId')
                 ->on('keywords_report.request_report_id', '=', 'reqest_report_api.id');
+        });
+        $query->LeftJoin('adgroups', function ($join){
+            $join->on( 'keywords.ad_group_id', '=', 'adgroups.id');
         });
         $query->leftJoin(
             DB::raw("(

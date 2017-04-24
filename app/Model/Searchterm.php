@@ -62,21 +62,8 @@ class Searchterm extends Model
 
     protected $table = 'search_terms_report';
 
-    public function upload($file) {
-        $data = [];
+    public function upload($data) {
         $dataToInsert = [];
-        $lines = explode(PHP_EOL, $file);
-        if(trim($lines[0]) != self::ACCEPTED_FORMAT) {
-            throw new SearchtermUploadException('Incorrect file type, only Amazon report text file type is allowed!');
-        }
-        //unset file type line
-        unset($lines[0]);
-        //unset empty second line
-        unset($lines[1]);
-
-        foreach ($lines as $line) {
-            $data[] = explode("\t", $line);
-        }
         //imported data fields
         $dataFields = $data[0];
         //required data fields

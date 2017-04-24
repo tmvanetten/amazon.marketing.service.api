@@ -4,6 +4,8 @@ namespace App\Helpers;
 require_once base_path('vendor/amzn/amazon-advertising-api-php/AmazonAdvertisingApi/Client.php');
 use \Exception;
 use AmazonAdvertisingApi\Client;
+use App\Model\Keywords;
+use App\Model\Adgroups;
 
 class AmazonAPI {
     //amazon advertise API client
@@ -54,6 +56,41 @@ class AmazonAPI {
         return json_decode($responses['response'], true);
     }
 
+    public function getAndCreateBiddableKeyword($id) {
+        $responses = $this->_client->getBiddableKeyword($id);
+        if(!$responses['success'])
+            $this->requestException(__FUNCTION__);
+        $keyword = json_decode($responses['response'], true);
+        $data = [
+            'id' => $keyword['keywordId'],
+            'ad_group_id' => $keyword['adGroupId'],
+            'campaign_id' => $keyword['campaignId'],
+            'keyword_text' => $keyword['keywordText'],
+            'match_type' => $keyword['matchType'],
+            'bid' => isset($keyword['bid']) ? $keyword['bid'] : 0,
+            'state' => $keyword['state']
+        ];
+        $keyword = Keywords::find($data['id']);
+        if($keyword) {
+            $this->_updateModel($keyword, $data)->save();
+        } else {
+            Keywords::create($data);
+        }
+        return $this;
+    }
+
+    public function getAndCreateNKeyword($id) {
+        $responses = $this->_client->getNegativeKeyword($id);
+        if(!$responses['success'])
+            $this->requestException(__FUNCTION__);
+        $keyword = json_decode($responses['response'], true);
+        $nkeyword = NegativeKeywordsReport::where('campaignId', $keyword['campaignId'])
+            ->where('adGroupId', $keyword['adGroupId'])
+            ->where('keywordId', $keyword['keywordId'])
+            ->first();
+        return $this;
+    }
+
     public function bidOnAdgroup($adgroupId, $bid) {
         $adgroupId = (int) $adgroupId;
         $responses = $this->_client->updateAdGroups([
@@ -82,6 +119,13 @@ class AmazonAPI {
 
     private function requestException($methodName) {
         throw new AmazonAPIException("Cannot connect to Amazon API Method $methodName");
+    }
+
+    protected function _updateModel($model, $data){
+        foreach ($data as $key=>$value){
+            $model->$key = $value;
+        }
+        return $model;
     }
 }
 
